@@ -1,6 +1,8 @@
-# Weiterrechnen
+# Zwischenzug
 
-German for **keep calculating** — past the move that scared you. (`…a6` was not a reason to reject `a4`; it was the start of the line.)
+The **in-between move** — see it before you recapture. This week that was `22.e6` after `…Bxg2`, not `Kxg2`. The same habit as stopping at `…a6`: the first reply is not the line.
+
+A local training dossier for a **2171 FIDE** player who wants the GM title — without building another chess site.
 
 A local training dossier for a **2171 FIDE** player who wants the GM title — without building another chess site.
 

@@ -1,7 +1,7 @@
-# Handoff — Weiterrechnen, next depth
+# Handoff — Zwischenzug, next depth
 
 Date: 2026-09-12  
-Repo: https://github.com/kaiser-data/weiterrechnen  
+Repo: https://github.com/kaiser-data/zwischenzug  
 Workspace: `/Users/marty/grok_projects/chess_path_to`  
 Open: `open index.html` → **Board** tab
 

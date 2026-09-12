@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Weiterrechnen</title>
+<title>Zwischenzug</title>
 <style>
   :root {
     --cover: #3f1a24;
@@ -715,7 +715,7 @@
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "weiterrechnen.json";
+    a.download = "zwischenzug.json";
     a.click();
   });
   $("importFile").addEventListener("change", (e) => {
