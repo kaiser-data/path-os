@@ -94,7 +94,7 @@ Pieces are [CBurnett](https://github.com/lichess-org/lila/tree/master/public/pie
 
 ## Next work
 
-Read [`HANDOFF.md`](HANDOFF.md) before adding features. The gap is calculation depth (he stopped at `…a6`), not more UI.
+Claude (or any agent): read **[`CLAUDE.md`](CLAUDE.md)** first, then [`HANDOFF.md`](HANDOFF.md). The gap is calculation depth (he stopped at `…a6`), not more UI. When a new 15+10 URL arrives, author `sessions/<id>.json` and bundle — do not edit `session-board.js` for that game.
 
 ## Files
 
