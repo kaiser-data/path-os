@@ -88,6 +88,10 @@ The session forces the honest order:
 
 Pieces are [CBurnett](https://github.com/lichess-org/lila/tree/master/public/piece/cburnett) (public domain), the same Staunton set Lichess uses. Board colours are Lichess green (`#eeeed2` / `#769656`) with a last-move wash. Move generation is [chess.js 0.10.3](https://github.com/jhlywa/chess.js) (MIT).
 
+## Next work
+
+Read [`HANDOFF.md`](HANDOFF.md) before adding features. The gap is calculation depth (he stopped at `…a6`), not more UI.
+
 ## Files
 
 ```
