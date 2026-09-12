@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kaiser — Path OS</title>
+<style>
+  :root {
+    --cover: #3f1a24;
+    --cover-2: #261016;
+    --paper: #f3ead8;
+    --paper-2: #e7dcc4;
+    --rule: #8ea3b5;
+    --ink: #1c1712;
+    --stamp: #1f4a38;
+    --gold: #b08a4a;
+    --leak: #a61b1b;
+    --muted: #6b6258;
+    --ok: #1f4a38;
+    --sq-light: #eeeed2;
+    --sq-dark: #769656;
+    --sq-last: rgba(155, 199, 0, 0.55);
+    --sq-sel: rgba(20, 85, 30, 0.5);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #5a2432 0%, transparent 50%),
+      var(--cover-2);
+    color: var(--ink);
+    font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+  }
+  h1, h2, h3, .serif {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+  a { color: var(--stamp); }
+  a:hover { color: var(--cover); }
+  button, input, select, textarea {
+    font: inherit;
+    color: inherit;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 28px auto 64px;
+    padding: 0 16px;
+  }
+  .folder {
+    background: var(--cover);
+    border-radius: 2px 14px 10px 10px;
+    padding: 10px 10px 0;
+    box-shadow: 0 24px 60px rgba(0,0,0,.35);
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 8px;
+    overflow-x: auto;
+  }
+  .tabs button {
+    background: #5a2834;
+    color: #f3ead8;
+    border: 0;
+    padding: 10px 16px 12px;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    opacity: .78;
+  }
+  .tabs button[aria-selected="true"] {
+    background: var(--paper);
+    color: var(--ink);
+    opacity: 1;
+  }
+  .sheet {
+    background: var(--paper);
+    min-height: 78vh;
+    padding: 28px 32px 40px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      rgba(142,163,181,.28) 32px
+    );
+    background-position: 0 8px;
+  }
+  @media (max-width: 720px) {
+    .sheet { padding: 18px 14px 32px; }
+  }
+  .idplate {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: start;
+    margin-bottom: 22px;
+    background: var(--paper);
+    position: relative;
+  }
+  .idplate h1 { margin: 0; font-size: 2.15rem; line-height: 1.05; }
+  .idplate p { margin: .35rem 0 0; color: var(--muted); max-width: 62ch; }
+  .stamp {
+    border: 2px solid var(--stamp);
+    color: var(--stamp);
+    padding: 8px 12px;
+    transform: rotate(-8deg);
+    font-family: "Iowan Old Style", Palatino, serif;
+    text-align: center;
+    min-width: 118px;
+  }
+  .stamp.leak {
+    border-color: var(--leak);
+    color: var(--leak);
+  }
+  .stamp b { display: block; font-size: 1.05rem; }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 16px 0 26px;
+  }
+  @media (max-width: 800px) { .stats { grid-template-columns: 1fr 1fr; } }
+  .stat {
+    background: rgba(255,255,255,.35);
+    border: 1px solid rgba(28,23,18,.12);
+    padding: 10px 12px;
+  }
+  .stat b { display: block; font-size: 1.35rem; font-family: "Iowan Old Style", Palatino, serif; }
+  .stat span { color: var(--muted); font-size: .86rem; }
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1.35fr .85fr;
+    gap: 28px;
+  }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .task {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 10px;
+    padding: 10px 0 12px;
+    border-bottom: 1px dashed rgba(28,23,18,.18);
+    background: var(--paper);
+  }
+  .task input { width: 18px; height: 18px; margin-top: 4px; }
+  .task h3 { margin: 0; font-size: 1.12rem; }
+  .task .meta { color: var(--muted); font-size: .9rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .btn, .linkbtn {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    border: 0;
+    padding: 7px 12px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .linkbtn { background: var(--stamp); color: #f4efe4; }
+  .btn.ghost, .linkbtn.ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid rgba(28,23,18,.35);
+  }
+  .btn.warn { background: var(--leak); }
+  .sidebox {
+    background: rgba(255,255,255,.4);
+    border: 1px solid rgba(28,23,18,.14);
+    padding: 14px;
+  }
+  .sidebox h2 { margin: 0 0 8px; font-size: 1.2rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; background: var(--paper); }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid rgba(28,23,18,.12); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .ok { color: var(--ok); }
+  .bad { color: var(--leak); }
+  label { display: block; font-size: .86rem; color: var(--muted); margin: 8px 0 3px; }
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    width: 100%;
+    background: #fffdf8;
+    border: 1px solid rgba(28,23,18,.25);
+    padding: 7px 8px;
+  }
+  textarea { min-height: 72px; resize: vertical; }
+  .loglist { list-style: none; padding: 0; margin: 0; }
+  .loglist li {
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(28,23,18,.18);
+    background: var(--paper);
+  }
+  .hidden { display: none !important; }
+  .note {
+    background: #fff7e6;
+    border-left: 4px solid var(--gold);
+    padding: 10px 12px;
+    margin: 12px 0;
+  }
+  footer.sheet-foot {
+    margin-top: 28px;
+    color: var(--muted);
+    font-size: .85rem;
+    background: var(--paper);
+  }
+  .board-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 520px) 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { .board-layout { grid-template-columns: 1fr; } }
+  .board-frame { width: min(100%, 520px); }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    width: 100%;
+    aspect-ratio: 1;
+    border: 3px solid #1a1a1a;
+  }
+  .sq {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3%;
+    cursor: pointer;
+    border: 0;
+    background-color: var(--sq-light);
+  }
+  .sq.dark { background-color: var(--sq-dark); }
+  .sq.last { background-image: linear-gradient(var(--sq-last), var(--sq-last)); }
+  .sq.sel { background-image: linear-gradient(var(--sq-sel), var(--sq-sel)); }
+  .sq.sel.last { background-image: linear-gradient(var(--sq-sel), var(--sq-sel)); }
+  .sq svg { width: 92%; height: 92%; display: block; pointer-events: none; }
+  .sq .coord {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .sq.light .coord { color: #769656; }
+  .sq.dark .coord { color: #eeeed2; }
+  .sq .coord.file { right: 3px; bottom: 3px; }
+  .sq .coord.rank { left: 3px; top: 3px; }
+  .sq.hint::after {
+    content: "";
+    position: absolute;
+    width: 26%;
+    height: 26%;
+    border-radius: 50%;
+    background: #1a1a1a;
+    opacity: .18;
+  }
+  .sq.dark.hint::after { background: #fff; opacity: .28; }
+  .sq.hint.piece::after {
+    width: 82%;
+    height: 82%;
+    background: transparent;
+    border: 4px solid rgba(26,26,26,.22);
+    border-radius: 50%;
+    opacity: 1;
+  }
+  .sq.dark.hint.piece::after { border-color: rgba(255,255,255,.35); }
+  .board-steps { display: flex; gap: 6px; margin: 0 0 14px; flex-wrap: wrap; }
+  .board-steps span { padding: 6px 10px; border: 1px solid rgba(28,23,18,.2); background: rgba(255,255,255,.4); color: var(--muted); }
+  .board-steps span.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .board-steps span.done { border-color: var(--stamp); color: var(--stamp); }
+  .session-panel { background: rgba(255,255,255,.5); border: 1px solid rgba(28,23,18,.14); padding: 14px 16px; }
+  .session-panel h2 { margin: 0 0 8px; font-size: 1.22rem; }
+  .session-panel label { display: block; font-weight: 600; margin: 10px 0 4px; }
+  .session-panel label span { display: block; font-weight: 400; color: var(--muted); font-size: .92rem; }
+  .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  @media (max-width: 720px) { .triple { grid-template-columns: 1fr; } }
+  .key { display: none; margin-top: 12px; padding: 10px 12px; background: #fff7e6; border-left: 4px solid var(--gold); }
+  .key.show { display: block; }
+  .err { color: var(--leak); font-size: .9rem; min-height: 1.1em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="folder">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-tab="today">Today</button>
+      <button type="button" role="tab" data-tab="session">Board</button>
+      <button type="button" role="tab" data-tab="week">Week</button>
+      <button type="button" role="tab" data-tab="ladder">Ladder</button>
+      <button type="button" role="tab" data-tab="stack">Stack</button>
+      <button type="button" role="tab" data-tab="log">Log</button>
+      <button type="button" role="tab" data-tab="crush">Crush</button>
+    </div>
+    <div class="sheet">
+      <header class="idplate dossier-chrome">
+        <div>
+          <h1>Kaiser, Martin</h1>
+          <p>FIDE 4689640 · GER · 2171 standard · no title · Lichess emperor555. Path: train first, then crush. This file is the dossier. Chess happens in the tools it opens.</p>
+        </div>
+        <div class="stamp" id="stamp"><b id="stampTitle">TRAINING</b><span id="stampSub">phase 1</span></div>
+      </header>
+      <div class="stats dossier-chrome">
+        <div class="stat"><b>2171</b><span>FIDE standard</span></div>
+        <div class="stat"><b id="weekMin">0</b><span>minutes this week / 600</span></div>
+        <div class="stat"><b id="blitzToday">0</b><span>blitz today / cap 3</span></div>
+        <div class="stat"><b>2200</b><span>next title: CM</span></div>
+      </div>
+
+      <section id="panel-today">
+        <div class="grid2">
+          <div>
+            <h2 class="serif" id="todayHead">Today</h2>
+            <p class="muted" id="todayWhy"></p>
+            <p class="note"><a href="#session" id="openSession">Open today’s board</a> — 15+10 vs justlik3that (JB2bQpWt). Forms + board in this same dossier.</p>
+            <div id="tasks"></div>
+            <div class="row" style="margin-top:16px">
+              <button class="btn" type="button" id="addMin">Log minutes</button>
+              <button class="btn ghost" type="button" id="blitzPlus">Blitz +1</button>
+              <button class="btn ghost" type="button" id="blitzReset">Reset blitz</button>
+            </div>
+          </div>
+          <aside class="sidebox">
+            <h2>Rules that do not move</h2>
+            <p>0 blitz is the target. 3 is the cap. Never before calculation. Never as a “warm-up.” Extra blitz is a leak, not training.</p>
+            <p>Engine after you have written your own line. Not during.</p>
+            <p>One White system, two Black systems. No repertoire tourism.</p>
+            <p class="muted">Hours you already spend: ~3–4/week of Lichess, almost all blitz (12,241 games, peak 2319 in Apr 2020). This week reallocates that time.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="panel-session" class="hidden">
+        <div class="board-steps" id="boardSteps"></div>
+        <div class="board-layout">
+          <div class="board-frame">
+            <div class="board" id="chessBoard" role="grid" aria-label="Chessboard"></div>
+            <p class="muted" id="boardStatus" style="margin:8px 0 0"></p>
+            <div class="row">
+              <button class="btn ghost" type="button" id="boardUndo">Undo</button>
+              <button class="btn ghost" type="button" id="boardReset">Reset position</button>
+            </div>
+          </div>
+          <div class="session-panel">
+            <h2 id="boardTitle"></h2>
+            <p id="boardPrompt" class="muted"></p>
+            <form id="boardForm" autocomplete="off"></form>
+            <p class="err" id="boardErr"></p>
+            <div class="key" id="boardKey"></div>
+            <div class="row">
+              <button class="btn" type="button" id="boardLock">Lock answers</button>
+              <button class="btn ghost" type="button" id="boardNext" disabled>Next</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-week" class="hidden">
+        <h2 class="serif">Ten-hour week</h2>
+        <p>Default 10 hours in the 8–12 band. If a day slips, cut openings first, never calculation or endgames.</p>
+        <table>
+          <thead><tr><th>Day</th><th>Work</th><th>Min</th><th>Open</th></tr></thead>
+          <tbody>
+            <tr><td>Mon</td><td>Candidate-move calculation (write lines). Then 15 min Lucena/Philidor drill.</td><td>105</td><td>Book + practice</td></tr>
+            <tr><td>Tue</td><td>Endgame method (de la Villa / Chessable). Play the won ending vs tablebase-perfect defense.</td><td>90</td><td>Chessable + Lichess</td></tr>
+            <tr><td>Wed</td><td>Untimed mixed tactics. Stop if you are guessing. Accuracy over rating.</td><td>90</td><td>ChessTempo</td></tr>
+            <tr><td>Thu</td><td>One model game, pause-and-predict. 30 min repertoire maintenance only.</td><td>90</td><td>Study + Chessable</td></tr>
+            <tr><td>Fri</td><td>Calculation 60. Then one 15+10 or 30+20. Annotate before engine.</td><td>105</td><td>Lichess</td></tr>
+            <tr><td>Sat</td><td>Deep analysis / simulation of your own critical positions (Kuljasevic method).</td><td>90</td><td>Analysis board</td></tr>
+            <tr><td>Sun</td><td>Off, walk, sleep. Optional 30 min spaced-repetition openings if you missed Thu.</td><td>0–30</td><td>—</td></tr>
+          </tbody>
+        </table>
+        <div class="note">Phase 1 (12 weeks): get better. Phase 2: crush — league plus opens, then norms. Do not schedule GM-norm trips while the blitz leak is still open.</div>
+        <h3>Twelve-week blocks</h3>
+        <table>
+          <thead><tr><th>Weeks</th><th>Emphasis</th><th>Done when</th></tr></thead>
+          <tbody>
+            <tr><td>1–4</td><td>Calculation hygiene + rook endings. Freeze opening expansion.</td><td>You write candidate lists without prompting. Lucena/Philidor are automatic.</td></tr>
+            <tr><td>5–8</td><td>Conversion: +/= endings vs engine from your openings. Trim the repertoire.</td><td>You can convert a pawn-up rook ending in 20 minutes of play vs Stockfish at reduced strength, without panic.</td></tr>
+            <tr><td>9–12</td><td>Slow games 2×/week + full postmortem. First crush event is optional, not required.</td><td>A folder of 12 analysed slow games with your errors tagged (calc / conversion / opening / time).</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="panel-ladder" class="hidden">
+        <h2 class="serif">Title ladder</h2>
+        <p>From FIDE Title Regulations B.01, in force 1 January 2024. GM is the last box, not the next one.</p>
+        <table>
+          <thead><tr><th>Title</th><th>Rating</th><th>Also</th><th>You</th></tr></thead>
+          <tbody>
+            <tr><td>CM</td><td>2200</td><td>none (need 30 rated games at the time for ratings after 2017-07-01)</td><td>+29 · first stamp</td></tr>
+            <tr><td>FM</td><td>2300</td><td>none</td><td>+129 · first serious title</td></tr>
+            <tr><td>IM</td><td>2400</td><td>3 IM norms, ≥27 games, performance ≥2450, opp. avg ≥2230</td><td>+229 + events</td></tr>
+            <tr><td>GM</td><td>2500</td><td>3 GM norms, ≥27 games, performance ≥2600, opp. avg ≥2380, mix of GMs and federations</td><td>+329 + professional volume</td></tr>
+          </tbody>
+        </table>
+        <p>K-factor at 2171 is 20 (under 2400). Rating does not move without classical games. Training without games will plateau; that is why Crush exists as a later tab, not as week one.</p>
+        <p class="muted">Honest ceiling talk: 43, 2171, league-volume FIDE games, Lichess blitz 2085. FM is a real amateur-title project. IM needs a multi-year tournament life. GM is the north star of this dossier, not a 12-week promise.</p>
+      </section>
+
+      <section id="panel-stack" class="hidden">
+        <h2 class="serif">Use these. Do not rebuild them.</h2>
+        <table>
+          <thead><tr><th>Job</th><th>Tool</th><th>How you use it here</th></tr></thead>
+          <tbody>
+            <tr><td>Calculation book</td><td>Aagaard, <i>Grandmaster Preparation: Calculation</i></td><td>Candidates first. Paper, clock optional, write the line.</td></tr>
+            <tr><td>Rated tactics</td><td><a href="https://chesstempo.com/chess-tactics/" target="_blank" rel="noopener">ChessTempo mixed</a></td><td>Untimed. Guessing is a failed set.</td></tr>
+            <tr><td>Free puzzles / studies</td><td><a href="https://lichess.org/training" target="_blank" rel="noopener">Lichess puzzles</a> · <a href="https://lichess.org/study" target="_blank" rel="noopener">studies</a></td><td>Secondary. Not Puzzle Storm.</td></tr>
+            <tr><td>Endgame theory</td><td>de la Villa, <i>100 Endgames You Must Know</i> / Chessable</td><td>Spaced repetition, then play the position out.</td></tr>
+            <tr><td>Endgame conversion</td><td><a href="https://lichess.org/practice" target="_blank" rel="noopener">Lichess practice</a> · <a href="https://syzygy-tables.info/" target="_blank" rel="noopener">Syzygy</a></td><td>Win it against perfect defense.</td></tr>
+            <tr><td>Slow play</td><td><a href="https://lichess.org/" target="_blank" rel="noopener">Lichess 15+10 / 30+20</a></td><td>The only online games that count. Zero classical games on this account today.</td></tr>
+            <tr><td>Analysis</td><td><a href="https://lichess.org/analysis" target="_blank" rel="noopener">Lichess analysis</a></td><td>Your notes first, Stockfish second.</td></tr>
+            <tr><td>Openings</td><td><a href="https://www.chessable.com/" target="_blank" rel="noopener">Chessable</a> · <a href="https://lichess.org/opening" target="_blank" rel="noopener">explorer</a></td><td>Maintenance of a tiny repertoire.</td></tr>
+            <tr><td>Database on Mac</td><td>Lichess studies. Later: ChessX or SCID vs. PC. ChessBase is Windows.</td><td>Do not buy ChessBase to procrastinate week 1.</td></tr>
+            <tr><td>Self-study methods</td><td>Kuljasevic workbook vol. 3 (2100–2400)</td><td>Saturday simulation / deep analysis.</td></tr>
+            <tr><td>German events</td><td><a href="https://schach-turnier.de/" target="_blank" rel="noopener">schach-turnier.de</a> · <a href="https://chess-results.com/" target="_blank" rel="noopener">chess-results</a></td><td>Crush tab, when you switch it on.</td></tr>
+            <tr><td>FIDE card</td><td><a href="https://ratings.fide.com/profile/4689640" target="_blank" rel="noopener">ratings.fide.com/4689640</a></td><td>Truth, not Lichess blitz.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="panel-log" class="hidden">
+        <div class="grid2">
+          <div>
+            <h2 class="serif">Session log</h2>
+            <form id="sessionForm">
+              <label>Date <input name="date" type="date" required></label>
+              <label>Kind
+                <select name="kind">
+                  <option>calculation</option>
+                  <option>endgame</option>
+                  <option>tactics</option>
+                  <option>openings</option>
+                  <option>slow game</option>
+                  <option>analysis</option>
+                  <option>physical</option>
+                </select>
+              </label>
+              <label>Minutes <input name="minutes" type="number" min="5" max="300" value="60" required></label>
+              <label>Note <textarea name="note" placeholder="What broke. One sentence."></textarea></label>
+              <div class="row"><button class="btn" type="submit">Add session</button></div>
+            </form>
+            <ul class="loglist" id="sessionList"></ul>
+          </div>
+          <div>
+            <h2 class="serif">Classical / slow games</h2>
+            <form id="gameForm">
+              <label>Date <input name="date" type="date" required></label>
+              <label>Event <input name="event" type="text" placeholder="Lichess 15+10 or club"></label>
+              <label>Result
+                <select name="result"><option>1-0</option><option>0-1</option><option>½-½</option></select>
+              </label>
+              <label>Error tag
+                <select name="tag">
+                  <option>calculation</option>
+                  <option>conversion</option>
+                  <option>opening</option>
+                  <option>time</option>
+                  <option>clean</option>
+                </select>
+              </label>
+              <label>Note <textarea name="note" placeholder="Critical position in words."></textarea></label>
+              <div class="row"><button class="btn" type="submit">Add game</button></div>
+            </form>
+            <ul class="loglist" id="gameList"></ul>
+            <div class="row" style="margin-top:16px">
+              <button class="btn ghost" type="button" id="exportBtn">Export JSON</button>
+              <label class="btn ghost" style="margin:0;cursor:pointer">Import JSON<input id="importFile" type="file" accept="application/json" class="hidden"></label>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-crush" class="hidden">
+        <h2 class="serif">Crush — later</h2>
+        <p>You have not committed a tournament volume yet. That is allowed. This tab stays closed as a schedule until the training leak is under control.</p>
+        <p>When you switch it on, the first year is not GM norms. It is:</p>
+        <ol>
+          <li>Keep league games. They already exist.</li>
+          <li>Add 4–6 classical weekend opens in Germany when ready (~40–60 rated games). Calendar: schach-turnier.de and chess-results.com.</li>
+          <li>Play up, not down. Average opposition near 2200+ if you want the rating to move at K=20.</li>
+          <li>CM at 2200 is a paperwork title once you have the rating and game count. Take it. Then hunt FM 2300.</li>
+          <li>IM/GM norms need 9-round events with titled foreigners. Do not buy those trips at 2171. Buy them when 2350 is real.</li>
+        </ol>
+        <p class="muted">Lichess rapid already peaked 2354. Slow chess is the weapon. Blitz is the leak. Crush is converting that peak onto a FIDE card.</p>
+      </section>
+
+      <footer class="sheet-foot">
+        Local dossier. Data stays in this browser. Sources in REFERENCES.md. Not a FIDE application.
+      </footer>
+    </div>
+  </div>
+</div>
+<script src="chess.min.js"></script>
+<script src="pieces.js"></script>
+<script src="session-board.js"></script>
+<script>
+(function () {
+  const KEY = "chess_path_to_v1";
+  const CAP = 3;
+  const WEEK_TARGET = 600;
+  const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  const PROTOCOL = {
+    0: { why: "Recovery. Sleep beats a seventh blitz session.", tasks: [
+      { title: "Off, or 30 min repertoire only if Thursday died", min: 30, hrefs: [["Chessable", "https://www.chessable.com/"]] }
+    ]},
+    1: { why: "Candidate moves before tactics. See the extra idea.", tasks: [
+      { title: "Aagaard Calculation — candidates, write every line", min: 90, hrefs: [["Lichess board", "https://lichess.org/analysis"]] },
+      { title: "Lucena or Philidor, play it out to the end", min: 15, hrefs: [["Practice", "https://lichess.org/practice"], ["Syzygy", "https://syzygy-tables.info/"]] }
+    ]},
+    2: { why: "Theory, then conversion against perfect defense.", tasks: [
+      { title: "de la Villa / Chessable endgame course", min: 50, hrefs: [["Chessable", "https://www.chessable.com/"]] },
+      { title: "Play the same ending vs tablebase or practice", min: 40, hrefs: [["Practice", "https://lichess.org/practice"]] }
+    ]},
+    3: { why: "Untimed mixed. If you click fast, the set is void.", tasks: [
+      { title: "ChessTempo mixed tactics, untimed", min: 90, hrefs: [["ChessTempo", "https://chesstempo.com/chess-tactics/"], ["Lichess puzzles", "https://lichess.org/training"]] }
+    ]},
+    4: { why: "Plans, not new opening PDFs.", tasks: [
+      { title: "One model game, pause and predict each critical move", min: 60, hrefs: [["Lichess study", "https://lichess.org/study"]] },
+      { title: "Repertoire maintenance only", min: 30, hrefs: [["Chessable", "https://www.chessable.com/"], ["Explorer", "https://lichess.org/opening"]] }
+    ]},
+    5: { why: "Proof. One slow game is worth fifty blitz.", tasks: [
+      { title: "Calculation 60 — continue the book chapter", min: 60, hrefs: [["Analysis", "https://lichess.org/analysis"]] },
+      { title: "One 15+10 or 30+20, then annotate before engine", min: 45, hrefs: [["Play Lichess", "https://lichess.org/"]] }
+    ]},
+    6: { why: "Kuljasevic Saturday: deep analysis of YOUR positions.", tasks: [
+      { title: "Pick 2–3 critical positions from the week. Calculate. Then engine.", min: 90, hrefs: [["Analysis", "https://lichess.org/analysis"], ["Your Lichess", "https://lichess.org/@/emperor555"]] }
+    ]}
+  };
+
+  function todayISO(d) {
+    const x = d || new Date();
+    return x.getFullYear() + "-" + String(x.getMonth()+1).padStart(2,"0") + "-" + String(x.getDate()).padStart(2,"0");
+  }
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
+  }
+  function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+  function weekStart(d) {
+    const x = new Date(d);
+    const day = x.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    x.setDate(x.getDate() + diff);
+    x.setHours(0,0,0,0);
+    return x;
+  }
+
+  const state = Object.assign({
+    sessions: [],
+    games: [],
+    blitz: {},
+    checks: {}
+  }, load());
+
+  const $ = (id) => document.getElementById(id);
+
+  function weekMinutes() {
+    const start = weekStart(new Date());
+    return state.sessions.reduce((n, s) => {
+      const d = new Date(s.date + "T12:00:00");
+      return d >= start ? n + (Number(s.minutes) || 0) : n;
+    }, 0);
+  }
+
+  function renderStamp() {
+    const b = state.blitz[todayISO()] || 0;
+    const stamp = $("stamp");
+    if (b > CAP) {
+      stamp.classList.add("leak");
+      $("stampTitle").textContent = "LEAK";
+      $("stampSub").textContent = b + " blitz";
+    } else {
+      stamp.classList.remove("leak");
+      $("stampTitle").textContent = "TRAINING";
+      $("stampSub").textContent = "phase 1";
+    }
+    $("blitzToday").textContent = b;
+    $("blitzToday").parentElement.querySelector("span").textContent =
+      b > CAP ? "over cap — this is the leak" : "blitz today / cap 3";
+    $("weekMin").textContent = weekMinutes();
+  }
+
+  function renderToday() {
+    const now = new Date();
+    const iso = todayISO(now);
+    const proto = PROTOCOL[now.getDay()];
+    $("todayHead").textContent = DAYS[now.getDay()] + "  ·  " + iso;
+    $("todayWhy").textContent = proto.why;
+    const checks = state.checks[iso] || {};
+    $("tasks").innerHTML = proto.tasks.map((t, i) => {
+      const links = (t.hrefs || []).map(([label, href]) =>
+        '<a class="linkbtn" href="'+href+'" target="_blank" rel="noopener">'+label+'</a>'
+      ).join("");
+      return '<label class="task"><input type="checkbox" data-i="'+i+'" '+(checks[i]?"checked":"")+'><div><h3>'+t.title+'</h3><div class="meta">'+t.min+' min</div><div class="row">'+links+'</div></div></label>';
+    }).join("");
+    $("tasks").querySelectorAll("input[type=checkbox]").forEach((box) => {
+      box.addEventListener("change", () => {
+        state.checks[iso] = state.checks[iso] || {};
+        state.checks[iso][box.dataset.i] = box.checked;
+        save(state);
+      });
+    });
+  }
+
+  function renderLogs() {
+    const sessions = state.sessions.slice().reverse();
+    $("sessionList").innerHTML = sessions.length
+      ? sessions.slice(0, 20).map(s => '<li><b>'+s.date+'</b> · '+s.kind+' · '+s.minutes+'m<div class="muted">'+(s.note||"")+'</div></li>').join("")
+      : '<li class="muted">No sessions yet.</li>';
+    const games = state.games.slice().reverse();
+    $("gameList").innerHTML = games.length
+      ? games.slice(0, 20).map(g => '<li><b>'+g.date+'</b> · '+g.result+' · '+g.tag+'<div class="muted">'+(g.event||"")+' — '+(g.note||"")+'</div></li>').join("")
+      : '<li class="muted">No slow games logged. That is the FIDE problem.</li>';
+  }
+
+  function render() {
+    renderStamp();
+    renderToday();
+    renderLogs();
+    $("sessionForm").date.value = todayISO();
+    $("gameForm").date.value = todayISO();
+  }
+
+  function showTab(tab) {
+    document.querySelectorAll(".tabs button").forEach(b => {
+      b.setAttribute("aria-selected", b.dataset.tab === tab ? "true" : "false");
+    });
+    document.querySelectorAll("[id^=panel-]").forEach(p => p.classList.add("hidden"));
+    const panel = $("panel-" + tab);
+    if (panel) panel.classList.remove("hidden");
+    document.querySelectorAll(".dossier-chrome").forEach(el => {
+      el.classList.toggle("hidden", tab === "session");
+    });
+    if (tab === "session" && window.initPathBoard) window.initPathBoard();
+    if (location.hash.replace("#", "") !== tab) {
+      history.replaceState(null, "", "#" + tab);
+    }
+  }
+
+  document.querySelectorAll(".tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => showTab(btn.dataset.tab));
+  });
+  const openSession = $("openSession");
+  if (openSession) openSession.addEventListener("click", (e) => {
+    e.preventDefault();
+    showTab("session");
+  });
+  const hashTab = location.hash.replace("#", "");
+  if (hashTab) showTab(hashTab);
+  window.addEventListener("hashchange", () => {
+    const t = location.hash.replace("#", "");
+    if (t) showTab(t);
+  });
+
+  $("addMin").addEventListener("click", () => {
+    const minutes = Number(prompt("Minutes trained (slow work only, not blitz)", "60"));
+    if (!minutes || minutes < 5) return;
+    const kind = prompt("Kind: calculation / endgame / tactics / openings / slow game / analysis", "calculation") || "calculation";
+    state.sessions.push({ date: todayISO(), kind, minutes, note: "quick add", ts: Date.now() });
+    save(state);
+    render();
+  });
+
+  $("blitzPlus").addEventListener("click", () => {
+    const iso = todayISO();
+    state.blitz[iso] = (state.blitz[iso] || 0) + 1;
+    save(state);
+    renderStamp();
+  });
+  $("blitzReset").addEventListener("click", () => {
+    state.blitz[todayISO()] = 0;
+    save(state);
+    renderStamp();
+  });
+
+  $("sessionForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = e.target;
+    state.sessions.push({
+      date: f.date.value, kind: f.kind.value,
+      minutes: Number(f.minutes.value), note: f.note.value, ts: Date.now()
+    });
+    save(state);
+    f.note.value = "";
+    render();
+  });
+  $("gameForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = e.target;
+    state.games.push({
+      date: f.date.value, event: f.event.value, result: f.result.value,
+      tag: f.tag.value, note: f.note.value, ts: Date.now()
+    });
+    save(state);
+    f.note.value = "";
+    f.event.value = "";
+    render();
+  });
+
+  $("exportBtn").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "kaiser-path-os.json";
+    a.click();
+  });
+  $("importFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const incoming = JSON.parse(reader.result);
+        Object.assign(state, incoming);
+        save(state);
+        render();
+      } catch (err) {
+        alert("Could not read that JSON.");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
