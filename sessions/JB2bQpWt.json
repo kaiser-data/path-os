@@ -1,0 +1,105 @@
+{
+  "id": "JB2bQpWt",
+  "url": "https://lichess.org/JB2bQpWt",
+  "title": "15+10 · you White · Alapin",
+  "result": "1-0",
+  "event": "Lichess 15+10 vs justlik3that",
+  "startFen": "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20",
+  "logNote": "Stopped at a6; missed Bd7 Bxg2 e6. Red1 is pseudo-activity vs Rfd8.",
+  "steps": [
+    {
+      "id": "diagnose",
+      "name": "1 Diagnose",
+      "title": "After 19…Qa5, White to move",
+      "prompt": "Candidates only. Do not stop at the first reply you dislike.",
+      "fen": "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20",
+      "mustPlay": [],
+      "questions": [
+        { "name": "material", "label": "1.1 Material", "hint": "Who is up, and by how much?", "type": "text" },
+        { "name": "why", "label": "1.2 Why did it feel worse?", "type": "textarea" },
+        { "name": "c1", "label": "1.3 Three candidate moves", "type": "triple", "names": ["c1", "c2", "c3"] },
+        { "name": "stop", "label": "1.4 You did not play a4. Which Black move stopped you?", "hint": "e.g. a6", "type": "text" }
+      ],
+      "key": "<p><b>Material:</b> Black a pawn up. The minus is also the queen on a5 and the bishops vs uncoordinated White.</p><p>If you stopped at <b>…a6</b>, that is the leak. Next step is the line past a6 — not Red1.</p>"
+    },
+    {
+      "id": "calculate",
+      "name": "2 Calculate",
+      "title": "Four lines. Same capture is not the same eval.",
+      "prompt": "Open a branch. Play the moves on the board. Lock that branch. Next stays closed until all four are done.",
+      "fen": "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20",
+      "questions": [
+        { "name": "retreats", "label": "After 20.a4 a6, three legal squares that keep Bb5", "type": "triple", "names": ["sq1", "sq2", "sq3"] },
+        { "name": "zwischen", "label": "After 21…Bxg2, e6 or Kxg2 — and why?", "hint": "Name the zwischenzug.", "type": "textarea" },
+        { "name": "bd4q", "label": "Bd4 …Qxa2 — is the queen trapped like in the game?", "type": "textarea" }
+      ],
+      "branches": [
+        {
+          "id": "main",
+          "label": "a4 a6 Bd7 Bxg2 e6",
+          "mustPlay": ["a4", "a6", "Bd7", "Bxg2", "e6"],
+          "key": "<p class='ok'>The skipped line. 21.Bd7 keeps the bishop (Bc4, Bd3 also). 21…Bxg2 is the shot — not a reason to reject a4. <b>22.e6!</b> zwischenzug, do not recapture first. ≈ equal.</p>"
+        },
+        {
+          "id": "mixup",
+          "label": "a4 Bxg2?? (no Bd7)",
+          "mustPlay": ["a4", "Bxg2"],
+          "key": "<p class='bad'>Same capture, opposite eval. Without a6/Bd7, <b>21.Kxg2</b> and White is winning (~+5). Do not mix this with the Bd7 line.</p>"
+        },
+        {
+          "id": "bd4",
+          "label": "Bd4 Qxa2",
+          "mustPlay": ["Bd4", "Qxa2"],
+          "key": "<p class='bad'>Looks central, drops a2. Bishop left b2, so Ra1 does not trap the queen. ~−3.</p>"
+        },
+        {
+          "id": "red1",
+          "label": "Red1 Rfd8",
+          "mustPlay": ["Red1", "Rfd8"],
+          "key": "<p>Pseudo-activity. The rook looks busy. Black contests the file and you are worse (~−1.7). This is the move if he does not grab a2.</p>"
+        }
+      ],
+      "key": "<p><b>All four.</b> a4 is not refuted by a6. Bxg2 with Bd7 is a fight; Bxg2 without Bd7 is a blunder. Bd4 loses a2. Red1 dies to Rfd8.</p>"
+    },
+    {
+      "id": "trap",
+      "name": "3 Trap",
+      "title": "The game: after 20.Red1, Black to move",
+      "prompt": "He grabbed. Play …Qxa2 then Ra1.",
+      "fen": "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R1R2K1 b - - 3 20",
+      "mustPlay": ["Qxa2", "Ra1"],
+      "questions": [
+        { "name": "hunt", "label": "After …Qb3, White’s hunt move?", "type": "text" },
+        { "name": "instead", "label": "The move that refutes Red1 if Black does not grab?", "hint": "Rfd8", "type": "text" }
+      ],
+      "key": "<p><b>21.Ra1</b>, then <b>22.Ra3</b>. Refutation if he does not grab: <b>…Rfd8</b>.</p>"
+    },
+    {
+      "id": "hunt",
+      "name": "4 Hunt",
+      "title": "After 21…Qb3, White to move",
+      "prompt": "Play the hunt move, then tag the game honestly.",
+      "fen": "r4rk1/p3ppbp/1p4p1/1B1bP3/8/1q5P/1B2QPP1/R2R2K1 w - - 2 22",
+      "mustPlay": ["Ra3"],
+      "questions": [
+        { "name": "why", "label": "4.1 Why did you win?", "type": "select", "options": [
+          { "value": "", "label": "choose" },
+          { "value": "trap", "label": "I calculated the trap and he walked in" },
+          { "value": "blunder", "label": "He hung it; 20.Red1 was still a mistake" },
+          { "value": "both", "label": "Both: the hunt was real, and Red1 still needed the blunder" }
+        ]},
+        { "name": "next", "label": "4.2 Next time, move 20 is", "type": "text" },
+        { "name": "tag", "label": "4.3 Tag", "type": "select", "options": [
+          { "value": "", "label": "choose" },
+          { "value": "calculation", "label": "calculation" },
+          { "value": "conversion", "label": "conversion" },
+          { "value": "opening", "label": "opening" },
+          { "value": "time", "label": "time" },
+          { "value": "clean", "label": "clean" }
+        ]},
+        { "name": "note", "label": "4.4 Log note", "type": "textarea" }
+      ],
+      "key": "<p>Tag <b>calculation</b>, not clean. The miss was stopping at …a6. Logged to the dossier.</p>"
+    }
+  ]
+}

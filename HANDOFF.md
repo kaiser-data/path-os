@@ -221,11 +221,22 @@ The trainer’s job is to make him **finish those sentences with moves**, not to
 
 ---
 
-## 8. Suggested first PR for the next session
+## 8. First PR (landed 2026-09-12)
 
-1. Extract `sessions/JB2bQpWt.json` from the hardcoded object in `session-board.js`
-2. Add a second branch step: `Bd4 Qxa2` (queen not trapped) vs `Red1 Rfd8`
-3. `scripts/author_session.py` wrapping Stockfish → JSON
-4. One new 15+10 from emperor555, same schema
+Done:
 
-Stop when a **new** game can be loaded without editing `session-board.js` by hand.
+- `sessions/JB2bQpWt.json` is the source of truth
+- Board step 2 has four branches: `a4 a6 Bd7 Bxg2 e6` · `a4 Bxg2??` · `Bd4 Qxa2` · `Red1 Rfd8` — Next locked until all four are played
+- `scripts/author_session.py` + `scripts/bundle_sessions.py`
+- Hunt auto-appends to the Log via `pathLogGame`
+
+Not done: **no newer 15+10 than JB2bQpWt** (next rapid on the account is March 2026). Next session: play one new slow game, then:
+
+```
+python3 scripts/author_session.py --fen FEN --lines a4,Bd4,Red1 --depth 18 --json > sessions/NEWID.json
+# edit mustPlay / keys by hand — do not paste eval into the live page
+python3 scripts/bundle_sessions.py
+open index.html?session=NEWID#session
+```
+
+Stop when that new id loads without editing `session-board.js`.

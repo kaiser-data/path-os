@@ -99,13 +99,17 @@ Read [`HANDOFF.md`](HANDOFF.md) before adding features. The gap is calculation d
 ## Files
 
 ```
-index.html         one app
-chess.min.js       legal moves
-pieces.js          CBurnett SVGs
-session-board.js   board + forms
-session.html       jumps to index.html#session
-REFERENCES.md      what was taken from where
+index.html              one app
+sessions/JB2bQpWt.json  this week’s game (source of truth)
+sessions/bundle.js      packed for file:// — run scripts/bundle_sessions.py
+session-board.js        generic board (loads PATH_SESSIONS)
+scripts/author_session.py   Stockfish offline → SAN tree / stub JSON
+scripts/bundle_sessions.py  json → bundle.js
+chess.min.js            legal moves
+pieces.js               CBurnett SVGs
 ```
+
+Add a new slow game: write `sessions/<lichessId>.json`, then `python3 scripts/bundle_sessions.py`. Open `index.html?session=<id>#session`. No edit to `session-board.js`.
 
 ## Attribution
 

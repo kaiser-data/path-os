@@ -1,64 +1,25 @@
 (function () {
-  const FEN = {
-    0: "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20",
-    1: "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20",
-    2: "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R1R2K1 b - - 3 20",
-    3: "r4rk1/p3ppbp/1p4p1/1B1bP3/8/1q5P/1B2QPP1/R2R2K1 w - - 2 22"
-  };
-  const STEPS = [
-    { name: "1 Diagnose", title: "After 19…Qa5, White to move",
-      prompt: "Candidates only. Do not stop at the first reply you dislike." },
-    { name: "2 Calculate a4", title: "You rejected a4 because of …a6. Calculate past it.",
-      prompt: "Play the line on the board: a4 a6 Bd7 Bxg2 e6. Then answer. Stopping at a6 is the 2170 habit. Bd7 and Bxg2 are the 2300 moves." },
-    { name: "3 Trap", title: "After 20.Red1, Black to move",
-      prompt: "The game. Play …Qxa2 then Ra1. The refutation if he does not grab is still …Rfd8." },
-    { name: "4 Hunt", title: "After 21…Qb3, White to move",
-      prompt: "Play the hunt move, then tag the game honestly." }
-  ];
-  const FORMS = [
-    '<label>1.1 Material <span>Who is up, and by how much?</span><input name="s1_material" type="text" required></label>' +
-    '<label>1.2 Why did it feel worse?</label><textarea name="s1_why" required></textarea>' +
-    '<label>1.3 Three candidate moves</label><div class="triple"><input name="s1_c1" type="text" required><input name="s1_c2" type="text" required><input name="s1_c3" type="text" required></div>' +
-    '<label>1.4 You did not play a4. Which Black move stopped you?<input name="s1_stop" type="text" required placeholder="e.g. a6"></label>',
-    '<label>2.1 After 20.a4 a6 the bishop on b5 is attacked. Three legal squares that keep it.</label><div class="triple"><input name="s2_sq1" type="text" required placeholder="e.g. Bd7"><input name="s2_sq2" type="text" required><input name="s2_sq3" type="text" required></div>' +
-    '<label>2.2 Play on the board: <b>a4 a6 Bd7 Bxg2 e6</b> <span>That is the line you skipped. Lock will not open until those five moves are on the board.</span></label>' +
-    '<label>2.3 After 21…Bxg2, is 22.e6 or 22.Kxg2 stronger — and why? <span>One of them is a zwischenzug. Name the check or threat.</span><textarea name="s2_zwischen" required></textarea></label>' +
-    '<label>2.4 20.Bd4 …Qxa2 — is the queen trapped like in the game? Why / why not?<textarea name="s2_bd4" required></textarea></label>',
-    '<label>3.1 If …Qxa2, White’s next move?<input name="s3_white" type="text" required></label>' +
-    '<label>3.2 After …Qb3, White’s hunt move?<input name="s3_hunt" type="text" required></label>' +
-    '<label>3.3 The move that refutes Red1 if Black does not grab?<input name="s3_instead" type="text" required placeholder="Rfd8"></label>',
-    '<label>4.1 Why did you win?<select name="s4_why" required><option value="">choose</option><option value="trap">I calculated the trap and he walked in</option><option value="blunder">He hung it; 20.Red1 was still a mistake</option><option value="both">Both: the hunt was real, and Red1 still needed the blunder</option></select></label>' +
-    '<label>4.2 Next time, move 20 is<input name="s4_next" type="text" required></label>' +
-    '<label>4.3 Tag<select name="s4_tag" required><option value="">choose</option><option value="calculation">calculation</option><option value="conversion">conversion</option><option value="opening">opening</option><option value="time">time</option><option value="clean">clean</option></select></label>' +
-    '<label>4.4 Log note<textarea name="s4_note" required placeholder="Skipped a4 because of a6; did not calculate Bd7 Bxg2 e6"></textarea></label>'
-  ];
-  function keyStep0(form) {
-    const cands = [form.s1_c1 && form.s1_c1.value, form.s1_c2 && form.s1_c2.value, form.s1_c3 && form.s1_c3.value]
-      .map(function (s) { return (s || "").replace(/\s+/g, "").replace(/[+#]/g, ""); });
-    const hasA4 = cands.some(function (s) { return s.toLowerCase() === "a4"; });
-    const why = ((form.s1_why && form.s1_why.value) || "").toLowerCase();
-    const compare = ((form.s1_compare && form.s1_compare.value) || "").toLowerCase();
-    let html = "<p><b>Your sheet.</b> Material is right: Black is a pawn up.</p>";
-    if (why.indexOf("a2") !== -1 || why.indexOf("pawn") !== -1) {
-      html += "<p>The weak a2-pawn is real. It is not the whole minus. The queen on a5 and the two bishops outwork White’s uncoordinated pieces. Saving a2 without fixing that still leaves you worse.</p>";
-    }
-    if (hasA4) {
-      html += "<p class='ok'>a4 is in your candidate list. That is the hold: space, a2, and Bb5.</p>";
-    } else {
-      html += "<p class='bad'>a4 was missing from the three candidates. That was the move that keeps the position.</p>";
-    }
-    html += "<p><b>20.Red1 is pseudo-activity.</b> The rook looks busy on the open file. Black does not take on a2 — he plays <b>…Rfd8</b>, contests the file, and you are simply worse. The game win needed his grab. Next time: a4, not the rook lift.</p>";
-    if (compare.indexOf("protect") !== -1 || compare.indexOf("bb5") !== -1 || compare.indexOf("pawn") !== -1) {
-      html += "<p>Your note on a4 (pawn / Bb5) is the useful part. Red1 does neither of those things.</p>";
-    }
-    return html;
+  function sessions() {
+    return window.PATH_SESSIONS || {};
+  }
+  function currentId() {
+    const ids = Object.keys(sessions());
+    const q = new URLSearchParams(location.search).get("session");
+    if (q && sessions()[q]) return q;
+    return ids[0] || null;
   }
 
+  let session = null;
   let step = 0;
   let game = null;
   let selected = null;
-  let locked = [false, false, false, false];
+  let locked = [];
+  let branchLocked = [];
+  let activeBranch = 0;
   let ready = false;
+
+  function steps() { return (session && session.steps) || []; }
+  function cur() { return steps()[step] || {}; }
 
   function pieceSVG(color, type) {
     const key = (color === "w" ? "w" : "b") + type.toUpperCase();
@@ -81,7 +42,6 @@
         const el = document.createElement("button");
         el.type = "button";
         el.className = "sq " + ((fi + ri) % 2 ? "dark" : "light");
-        el.dataset.sq = sq;
         if (selected === sq) el.classList.add("sel");
         if (dests.has(sq)) el.classList.add("hint", piece ? "piece" : "empty");
         if (last && (last.from === sq || last.to === sq)) el.classList.add("last");
@@ -104,7 +64,9 @@
     });
     const turn = game.turn() === "w" ? "White" : "Black";
     const hist = game.history().join(" ");
-    document.getElementById("boardStatus").textContent = turn + " to move" + (hist ? " · " + hist : "");
+    const need = mustPlayNow();
+    const extra = need.length ? " · need " + need.join(" ") : "";
+    document.getElementById("boardStatus").textContent = turn + " to move" + (hist ? " · " + hist : "") + extra;
   }
 
   function onSquare(sq) {
@@ -114,8 +76,6 @@
       const move = game.move({ from: selected, to: sq, promotion: "q" });
       selected = null;
       if (!move && piece && piece.color === game.turn()) selected = sq;
-      const form = document.getElementById("boardForm");
-      if (move && form && form.s1_c1 && !form.s1_c1.value) form.s1_c1.value = move.san;
       renderBoard();
       return;
     }
@@ -125,26 +85,95 @@
     }
   }
 
-  function renderSteps() {
-    document.getElementById("boardSteps").innerHTML = STEPS.map(function (s, i) {
-      const cls = i === step ? "on" : (locked[i] ? "done" : "");
-      return "<span class='" + cls + "'>" + s.name + "</span>";
+  function esc(s) {
+    return String(s || "").replace(/[&<>"]/g, function (c) {
+      return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c];
+    });
+  }
+
+  function renderQuestion(q) {
+    const hint = q.hint ? "<span>" + esc(q.hint) + "</span>" : "";
+    if (q.type === "textarea") {
+      return "<label>" + esc(q.label) + hint + "<textarea name='" + esc(q.name) + "' required></textarea></label>";
+    }
+    if (q.type === "select") {
+      const opts = (q.options || []).map(function (o) {
+        return "<option value='" + esc(o.value) + "'>" + esc(o.label) + "</option>";
+      }).join("");
+      return "<label>" + esc(q.label) + hint + "<select name='" + esc(q.name) + "' required>" + opts + "</select></label>";
+    }
+    if (q.type === "triple") {
+      const names = q.names || ["a", "b", "c"];
+      const inputs = names.map(function (n, i) {
+        return "<input name='" + esc(n) + "' type='text' required placeholder='" + (i + 1) + "'>";
+      }).join("");
+      return "<label>" + esc(q.label) + hint + "</label><div class='triple'>" + inputs + "</div>";
+    }
+    return "<label>" + esc(q.label) + hint + "<input name='" + esc(q.name) + "' type='text' required></label>";
+  }
+
+  function renderBranches() {
+    const list = cur().branches;
+    const host = document.getElementById("branchList");
+    if (!host) return;
+    if (!list || !list.length) {
+      host.innerHTML = "";
+      host.classList.add("hidden");
+      return;
+    }
+    host.classList.remove("hidden");
+    host.innerHTML = list.map(function (b, i) {
+      const cls = i === activeBranch ? "on" : (branchLocked[i] ? "done" : "");
+      const mark = branchLocked[i] ? " ✓" : "";
+      return "<button type='button' class='branch " + cls + "' data-i='" + i + "'>" + esc(b.label) + mark + "</button>";
     }).join("");
-    document.getElementById("boardTitle").textContent = STEPS[step].title;
-    document.getElementById("boardPrompt").textContent = STEPS[step].prompt;
-    document.getElementById("boardForm").innerHTML = FORMS[step];
-    const key = document.getElementById("boardKey");
-    key.classList.remove("show");
-    key.innerHTML = "";
+    host.querySelectorAll("button").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (locked[step]) return;
+        activeBranch = Number(btn.dataset.i);
+        game = new Chess(cur().fen);
+        selected = null;
+        renderBranches();
+        renderBoard();
+      });
+    });
+  }
+
+  function renderSteps() {
+    document.getElementById("boardSteps").innerHTML = steps().map(function (s, i) {
+      const cls = i === step ? "on" : (locked[i] ? "done" : "");
+      return "<span class='" + cls + "'>" + esc(s.name) + "</span>";
+    }).join("");
+    document.getElementById("boardTitle").textContent = cur().title || "";
+    document.getElementById("boardPrompt").textContent = cur().prompt || "";
+    const qs = cur().questions || [];
+    document.getElementById("boardForm").innerHTML = qs.map(renderQuestion).join("");
+    document.getElementById("boardKey").classList.remove("show");
+    document.getElementById("boardKey").innerHTML = "";
     document.getElementById("boardErr").textContent = "";
     document.getElementById("boardNext").disabled = !locked[step];
     document.getElementById("boardLock").disabled = locked[step];
+    renderBranches();
   }
 
   function norm(s) { return (s || "").replace(/\s+/g, "").replace(/[+#]/g, ""); }
 
+  function mustPlayNow() {
+    const s = cur();
+    if (s.branches && s.branches.length) return s.branches[activeBranch].mustPlay || [];
+    return s.mustPlay || [];
+  }
+
+  function historyMatches(need) {
+    const h = game.history().map(norm);
+    if (!need.length) return true;
+    if (h.length < need.length) return false;
+    return need.every(function (m, i) { return h[i] === norm(m); });
+  }
+
   function lockStep() {
     const form = document.getElementById("boardForm");
+    const s = cur();
     const missing = Array.from(form.querySelectorAll("[required]")).filter(function (el) {
       return !String(el.value || "").trim();
     });
@@ -153,43 +182,47 @@
       missing[0].focus();
       return;
     }
-    if (step === 1) {
-      const h = game.history().map(norm);
-      const need = ["a4", "a6", "Bd7", "Bxg2", "e6"];
-      if (h.length < 5 || need.some(function (m, i) { return h[i] !== m; })) {
-        document.getElementById("boardErr").textContent = "On the board play exactly: a4 a6 Bd7 Bxg2 e6.";
-        return;
-      }
-    }
-    if (step === 2) {
-      const h = game.history().map(norm);
-      if (h[0] !== "Qxa2" || h[1] !== "Ra1") {
-        document.getElementById("boardErr").textContent = "On the board: play …Qxa2, then Ra1.";
-        return;
-      }
-    }
-    if (step === 3 && norm(game.history().slice(-1)[0] || "") !== "Ra3") {
-      document.getElementById("boardErr").textContent = "On the board: play Ra3.";
+    const need = mustPlayNow();
+    if (!historyMatches(need)) {
+      document.getElementById("boardErr").textContent = "On the board play: " + need.join(" ");
       return;
+    }
+    if (s.branches && s.branches.length) {
+      branchLocked[activeBranch] = true;
+      const bkey = s.branches[activeBranch].key || "";
+      document.getElementById("boardKey").innerHTML = bkey;
+      document.getElementById("boardKey").classList.add("show");
+      renderBranches();
+      const all = branchLocked.every(Boolean);
+      if (!all) {
+        document.getElementById("boardErr").textContent = "Branch locked. Open the next line.";
+        return;
+      }
     }
     locked[step] = true;
     const key = document.getElementById("boardKey");
-    const keys = [
-      keyStep0(form),
-      "<p><b>Key — past a6.</b> After 20.a4 a6 the bishop is attacked. <b>21.Bd7</b> keeps it (Bc4 and Bd3 also). Then <b>21…Bxg2</b> is the shot you have to see — not a reason to reject a4.</p><p>Do <b>not</b> recapture first. <b>22.e6!</b> is the zwischenzug (pawn to e6, bishop still hanging). 22.Kxg2 Qd5+ is playable and worse. Engine at this depth: a4 a6 Bd7 is about equal. 20.Bd4 …Qxa2 is −3: the dark-squared bishop left b2, so Ra1 does not trap the queen.</p>",
-      "<p><b>Key.</b> 21.Ra1, 22.Ra3. Refutation if he does not grab: <b>…Rfd8</b>.</p>",
-      "<p><b>Key.</b> Tag calculation. The miss was stopping at …a6. Log: “Did not calculate a4 a6 Bd7 Bxg2 e6.”</p>"
-    ];
-    key.innerHTML = keys[step];
+    key.innerHTML = (s.branches && s.branches.length ? key.innerHTML : "") + (s.key || "");
     key.classList.add("show");
     document.getElementById("boardLock").disabled = true;
-    document.getElementById("boardNext").disabled = step >= 3;
+    document.getElementById("boardNext").disabled = step >= steps().length - 1;
     document.getElementById("boardErr").textContent = "";
+    if (step === steps().length - 1 && typeof window.pathLogGame === "function") {
+      const noteEl = form.note;
+      window.pathLogGame({
+        date: new Date().toISOString().slice(0, 10),
+        event: session.event || session.id,
+        result: session.result || "",
+        tag: (form.tag && form.tag.value) || "calculation",
+        note: (noteEl && noteEl.value) || session.logNote || "",
+      });
+    }
   }
 
   function loadStep(n) {
     step = n;
-    game = new Chess(FEN[step]);
+    activeBranch = 0;
+    branchLocked = (cur().branches || []).map(function () { return false; });
+    game = new Chess(cur().fen);
     selected = null;
     renderSteps();
     renderBoard();
@@ -201,6 +234,14 @@
       return;
     }
     if (typeof Chess !== "function" || !window.CHESS_PIECES) return;
+    const id = currentId();
+    session = id ? sessions()[id] : null;
+    if (!session) {
+      document.getElementById("boardTitle").textContent = "No session loaded";
+      document.getElementById("boardPrompt").textContent = "Add sessions/*.json and run python3 scripts/bundle_sessions.py";
+      return;
+    }
+    locked = steps().map(function () { return false; });
     loadStep(0);
     document.getElementById("boardUndo").addEventListener("click", function () {
       if (locked[step]) return;
@@ -210,13 +251,13 @@
     });
     document.getElementById("boardReset").addEventListener("click", function () {
       if (locked[step]) return;
-      game = new Chess(FEN[step]);
+      game = new Chess(cur().fen);
       selected = null;
       renderBoard();
     });
     document.getElementById("boardLock").addEventListener("click", lockStep);
     document.getElementById("boardNext").addEventListener("click", function () {
-      if (step < 3 && locked[step]) loadStep(step + 1);
+      if (step < steps().length - 1 && locked[step]) loadStep(step + 1);
     });
     ready = true;
   };

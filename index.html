@@ -290,6 +290,16 @@
   .key { display: none; margin-top: 12px; padding: 10px 12px; background: #fff7e6; border-left: 4px solid var(--gold); }
   .key.show { display: block; }
   .err { color: var(--leak); font-size: .9rem; min-height: 1.1em; }
+  .branches { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+  .branch {
+    background: rgba(255,255,255,.55);
+    border: 1px solid rgba(28,23,18,.25);
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: .9rem;
+  }
+  .branch.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .branch.done { border-color: var(--stamp); color: var(--stamp); }
 </style>
 </head>
 <body>
@@ -356,6 +366,7 @@
           <div class="session-panel">
             <h2 id="boardTitle"></h2>
             <p id="boardPrompt" class="muted"></p>
+            <div class="branches hidden" id="branchList"></div>
             <form id="boardForm" autocomplete="off"></form>
             <p class="err" id="boardErr"></p>
             <div class="key" id="boardKey"></div>
@@ -505,6 +516,7 @@
 </div>
 <script src="chess.min.js"></script>
 <script src="pieces.js"></script>
+<script src="sessions/bundle.js"></script>
 <script src="session-board.js"></script>
 <script>
 (function () {
@@ -549,6 +561,21 @@
     try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
   }
   function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+  window.pathLogGame = function (entry) {
+    const s = load();
+    s.games = s.games || [];
+    s.games.push({
+      date: entry.date,
+      event: entry.event,
+      result: entry.result,
+      tag: entry.tag,
+      note: entry.note,
+      ts: Date.now()
+    });
+    save(s);
+    renderLogs();
+  };
 
   function weekStart(d) {
     const x = new Date(d);
