@@ -1,4 +1,6 @@
-# Path OS
+# Weiterrechnen
+
+German for **keep calculating** — past the move that scared you. (`…a6` was not a reason to reject `a4`; it was the start of the line.)
 
 A local training dossier for a **2171 FIDE** player who wants the GM title — without building another chess site.
 
@@ -53,7 +55,7 @@ The next stamp is **CM 2200**, then **FM 2300**.
 
 ## What you actually train with
 
-Path OS does **not** replace these. It opens them.
+The dossier does **not** replace these. It opens them.
 
 | Job | Tool |
 |---|---|

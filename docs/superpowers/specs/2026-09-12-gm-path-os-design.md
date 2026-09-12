@@ -1,4 +1,4 @@
-# Path OS — design
+# Weiterrechnen — design (was Path OS)
 
 Date: 2026-09-12  
 Player: Martin Kaiser, Dr. (FIDE 4689640, GER) · Lichess [emperor555](https://lichess.org/@/emperor555)

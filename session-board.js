@@ -29,7 +29,7 @@
     '<label>3.3 The move that refutes Red1 if Black does not grab?<input name="s3_instead" type="text" required placeholder="Rfd8"></label>',
     '<label>4.1 Why did you win?<select name="s4_why" required><option value="">choose</option><option value="trap">I calculated the trap and he walked in</option><option value="blunder">He hung it; 20.Red1 was still a mistake</option><option value="both">Both: the hunt was real, and Red1 still needed the blunder</option></select></label>' +
     '<label>4.2 Next time, move 20 is<input name="s4_next" type="text" required></label>' +
-    '<label>4.3 Path OS tag<select name="s4_tag" required><option value="">choose</option><option value="calculation">calculation</option><option value="conversion">conversion</option><option value="opening">opening</option><option value="time">time</option><option value="clean">clean</option></select></label>' +
+    '<label>4.3 Tag<select name="s4_tag" required><option value="">choose</option><option value="calculation">calculation</option><option value="conversion">conversion</option><option value="opening">opening</option><option value="time">time</option><option value="clean">clean</option></select></label>' +
     '<label>4.4 Log note<textarea name="s4_note" required placeholder="Skipped a4 because of a6; did not calculate Bd7 Bxg2 e6"></textarea></label>'
   ];
   function keyStep0(form) {

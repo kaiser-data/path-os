@@ -1,7 +1,7 @@
-# Handoff — Path OS, next depth
+# Handoff — Weiterrechnen, next depth
 
 Date: 2026-09-12  
-Repo: https://github.com/kaiser-data/path-os  
+Repo: https://github.com/kaiser-data/weiterrechnen  
 Workspace: `/Users/marty/grok_projects/chess_path_to`  
 Open: `open index.html` → **Board** tab
 
@@ -167,7 +167,7 @@ Never ship Stockfish WASM in v2 unless he asks. The leak is stopping early, not 
 
 ### Slice E — Log writes back into training
 
-After Hunt, auto-append to Path OS Log:
+After Hunt, auto-append to the Log:
 
 - result, tag `calculation`
 - note: `Stopped at a6; missed Bd7 Bxg2 e6`
