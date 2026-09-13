@@ -29,11 +29,14 @@ v1 is deliberately small: **friends sign in with Lichess and solve the sessions 
 ### v1 — Shared library (this spec)
 
 1. Storage layer with two backends (local, hosted)
-2. Sign in with Lichess
-3. Postgres schema with row-level security
-4. `publish_sessions.py`
-5. Deploy + CI, including the book-content gate
-6. Installable on a phone; responsive pass
+2. **The dossier split** — the app stops being one person's dossier
+3. **An account per person**, via Sign in with Lichess
+4. Postgres schema with row-level security
+5. `publish_sessions.py`
+6. Deploy + CI, including the book-content gate
+7. Installable on a phone; responsive pass
+
+Items 1, 2, 6 and 7 ship **without any backend**. That is the first link that can go out.
 
 ### Later, explicitly not now
 
@@ -103,11 +106,36 @@ The spike's exit criterion: a signed-in browser can read its own row and is refu
 
 It **refuses to publish anything under `sessions/private/`**, and refuses if a session id collides with a private one. This is a test, not a comment. CI additionally fails the build when a tracked file contains book content or when `git ls-files` matches `^books/` or `^sessions/private/`.
 
+## Profiles and the dossier split
+
+Today the page **is** Martin's dossier. His FIDE number, his Lichess handle, his weekly protocol, the Aagaard chapter he is on, and his leak in his own words are written into `index.html` as markup. A friend signing in would land inside another person's self-diagnosis and read it as if it were their own.
+
+So v1 separates **the app** from **a player's dossier**.
+
+**A new account starts empty, with placeholders.** No games, no logged sessions, no Aagaard entries, no saved lines, and none of Martin's text. Where the page now shows his words it shows a prompt instead — "What are you working on?", "Where did your calculation stop?" — and the player writes their own or leaves it blank. An empty dossier is a valid dossier; nothing is pre-filled on their behalf.
+
+**Editable per profile:**
+
+| Field | Source | Placeholder when empty |
+|---|---|---|
+| Display name | Editable; seeded from the Lichess username | The Lichess username |
+| Focus | Editable, free text | "What are you working on?" |
+| The leak | Editable, free text | "Where does your calculation stop?" |
+| Rating | Read from Lichess at sign-in, refreshable | "unrated" |
+
+**Not editable:** the Lichess id that identifies the account.
+
+**The weekly protocol becomes data, not markup.** The Today, Week and Ladder tabs currently hardcode one person's plan. They ship a neutral default that any player can follow, and Martin's personalised version becomes rows in his own profile like anyone else's. This is the largest single piece of work in the dossier split, and it is the reason the split is its own scope item rather than a footnote under auth.
+
+**Martin's profile is not special-cased in code.** He is a user with a filled-in dossier. The only asymmetry in the system is that publishing sessions is service-role, not a user action — and that stays server-side, out of the page entirely.
+
+**Consequence for the Aagaard drills:** they are loaded from a gitignored local bundle, so they appear only in local mode on his own machine. A signed-in friend has no path to them, by construction rather than by a permission check.
+
 ## Data
 
 | Table | Columns (shape) | Read access |
 |---|---|---|
-| `profiles` | `id`, `lichess_id`, `username`, `rating`, `created_at` | Owner; `username` readable by any signed-in user |
+| `profiles` | `id`, `lichess_id`, `username`, `display_name`, `focus`, `leak`, `rating`, `created_at` | Owner; `display_name` readable by any signed-in user |
 | `sessions` | `id`, `json`, `group`, `date`, `published_at` | Any signed-in user |
 | `attempts` | `user_id`, `session_id`, `step_id`, `result`, `stopped_at_ply`, `minutes`, `written_line`, `created_at` | **Owner only** |
 | `variations` | `user_id`, `session_id`, `step_id`, `moves`, `note`, `created_at` | Owner only |
