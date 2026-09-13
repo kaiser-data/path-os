@@ -206,7 +206,7 @@ def test_full_line_locks_without_replaying(browser_page, app_url):
 
 
 def test_enter_locks_without_reloading(browser_page, app_url):
-    private_step("aagaard-6-02")
+    private_step("aagaard-6-02")  # skips the test when the private drills are absent
     page = browser_page
     page.goto(app_url(session="aagaard-6-02", tab="session"))
     page.wait_for_selector("input[name=line]")
@@ -568,6 +568,9 @@ with:
   // One store for the whole page; the backend is swappable, the call sites are not.
   const store = window.PathStore.local(KEY);
   window.pathStore = store;
+  // Deliberate compatibility shim: the eleven existing call sites pass `state` or `s`,
+  // which is already the store's own object, so the argument is ignored rather than
+  // rewriting them. Renaming this would touch every caller for no behaviour change.
   function save() { return store.commit(); }
 ```
 
@@ -633,7 +636,7 @@ Expected: 3 passed.
 - [ ] **Step 8: Run the whole suite — nothing may regress**
 
 Run: `python3 -m pytest`
-Expected: 15 passed. If any board test fails, the refactor broke behaviour. Do not edit `session-board.js` to make it pass; fix `index.html`.
+Expected: 23 passed. If any board test fails, the refactor broke behaviour. Do not edit `session-board.js` to make it pass; fix `index.html`.
 
 - [ ] **Step 9: Commit**
 
@@ -685,7 +688,7 @@ The browser suite lives in `tests/` and runs with `python3 -m pytest` (pytest + 
 - [ ] **Step 4: Final run**
 
 Run: `python3 -m pytest && node --check session-board.js && node --check store.js`
-Expected: 15 passed, then no output from either check.
+Expected: 23 passed, then no output from either check.
 
 - [ ] **Step 5: Commit**
 

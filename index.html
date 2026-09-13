@@ -597,6 +597,7 @@
   </div>
 </div>
 <script src="chess.min.js"></script>
+<script src="store.js"></script>
 <script src="pieces.js"></script>
 <script src="sessions/bundle.js"></script>
 <script src="sessions/private/bundle.js"></script>
@@ -640,10 +641,13 @@
     const x = d || new Date();
     return x.getFullYear() + "-" + String(x.getMonth()+1).padStart(2,"0") + "-" + String(x.getDate()).padStart(2,"0");
   }
-  function load() {
-    try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
-  }
-  function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+  // One store for the whole page; the backend is swappable, the call sites are not.
+  const store = window.PathStore.local(KEY);
+  window.pathStore = store;
+  // Deliberate compatibility shim: the eleven existing call sites pass `state` or `s`,
+  // which is already the store's own object, so the argument is ignored rather than
+  // rewriting them. Renaming this would touch every caller for no behaviour change.
+  function save() { return store.commit(); }
 
   // Writes through the in-memory state: pushing into a fresh load() was overwritten by the next save(state).
   window.pathLogGame = function (entry) {
@@ -677,14 +681,9 @@
     return x;
   }
 
-  const state = Object.assign({
-    sessions: [],
-    games: [],
-    blitz: {},
-    checks: {},
-    aagaard: [],
-    variations: {}
-  }, load());
+  // Hydrated before first render; the object identity never changes, so every closure below
+  // and the `s` alias in pathLogGame keep pointing at live data.
+  const state = store.state;
 
   // Saved board lines per "sessionId:stepId", read and written by session-board.js.
   window.pathVariations = {
@@ -878,8 +877,6 @@
     e.preventDefault();
     showTab("session");
   });
-  const hashTab = location.hash.replace("#", "");
-  if (hashTab) showTab(hashTab);
   window.addEventListener("hashchange", () => {
     const t = location.hash.replace("#", "");
     if (t) showTab(t);
@@ -970,7 +967,11 @@
     reader.readAsText(file);
   });
 
-  render();
+  store.hydrate().then(function () {
+    render();
+    const boot = location.hash.replace("#", "");
+    if (boot) showTab(boot);
+  });
 })();
 </script>
 </body>

@@ -67,7 +67,12 @@ One file app: `index.html` + `session-board.js` + `pieces.js` (CBurnett) + `ches
 
 **Log tab:** session log, slow games (Board sessions append via `pathLogGame`), **Aagaard log** (chapter, exercise, minutes, full / short at ply N / wrong / none, note; summary lists what still needs a drill), JSON export/import of all state.
 
-**Storage:** `localStorage` `chess_path_to_v1` → `{sessions, games, blitz, checks, aagaard, variations}`. Page hooks: `pathLogGame`, `pathLogAagaard`, `pathVariations.get/set`, `pathOpenSession`, `initPathBoard`.
+**Storage:** `store.js` owns the state and the backend. `PathStore.local()` keeps one JSON blob in `localStorage` under `chess_path_to_v1`; reads are synchronous off the cached object, `hydrate()` runs once at boot and `commit()` persists. The page exposes `window.pathStore`. Page hooks are unchanged: `pathLogGame`, `pathLogAagaard`, `pathVariations.get/set`, `pathOpenSession`, `initPathBoard`.
+
+Two behaviours that are not obvious from the call sites:
+
+- **`commit()` does nothing until `hydrate()` has finished** — it returns `false` without writing. A hook that saves before boot completes silently persists nothing, instead of writing a blank state over stored data. A failed read still counts as finished, so a broken backend does not leave the store unable to save.
+- **`hydrate()` shape-checks what it loads.** A stored field whose type does not match the blank shape (`null`, an array where an object belongs, a primitive) is dropped and the blank default kept; unknown keys pass through untouched. Corrupt storage is repaired silently rather than raising — so "my edited JSON came back different" is expected, not a bug.
 
 Fixed along the way: board-logged games were overwritten by the next `save(state)` (now writes through the in-memory state).
 
@@ -139,7 +144,7 @@ python3 scripts/bundle_sessions.py
 open index.html
 ```
 
-Browser tests were run with **Python Playwright** (`from playwright.sync_api import sync_playwright`, `chromium.launch(channel="chrome")`) against `file:///…/index.html`; Node Playwright is not installed. Squares: `#chessBoard button` index `(8 - rank) * 8 + file`. Playwright refuses to click `aria-disabled` links — use `force=True` for the disabled Lichess link. Tests write to the Playwright profile, not his Chrome.
+The browser suite lives in `tests/` and runs with `python3 -m pytest` (pytest + Python Playwright, `channel="chrome"`; Node Playwright is not installed). Squares: `#chessBoard button` index `(8 - rank) * 8 + file`. Playwright refuses to click `aria-disabled` links — use `force=True` for the disabled Lichess link. Tests that need `sessions/private/` skip themselves in a checkout without it.
 
 ---
 

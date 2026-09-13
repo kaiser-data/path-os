@@ -2,6 +2,10 @@
 *.log
 .idea/
 .vscode/
+__pycache__/
+.pytest_cache/
+# Scratch for subagent-driven runs: briefs, reports, diffs, progress ledger.
+.superpowers/
 # Copyrighted books and anything transcribed from them. The repo is public.
 books/
 sessions/private/
