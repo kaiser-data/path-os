@@ -67,7 +67,7 @@ One file app: `index.html` + `session-board.js` + `pieces.js` (CBurnett) + `ches
 
 **Log tab:** session log, slow games (Board sessions append via `pathLogGame`), **Aagaard log** (chapter, exercise, minutes, full / short at ply N / wrong / none, note; summary lists what still needs a drill), JSON export/import of all state.
 
-**Storage:** `localStorage` `chess_path_to_v1` → `{sessions, games, blitz, checks, aagaard, variations}`. Page hooks: `pathLogGame`, `pathLogAagaard`, `pathVariations.get/set`, `pathOpenSession`, `initPathBoard`.
+**Storage:** `store.js` owns the state and the backend. `PathStore.local()` keeps one JSON blob in `localStorage` under `chess_path_to_v1`; reads are synchronous off the cached object, `hydrate()` runs once at boot and `commit()` persists. The page exposes `window.pathStore`. Page hooks are unchanged: `pathLogGame`, `pathLogAagaard`, `pathVariations.get/set`, `pathOpenSession`, `initPathBoard`.
 
 Fixed along the way: board-logged games were overwritten by the next `save(state)` (now writes through the in-memory state).
 
@@ -139,7 +139,7 @@ python3 scripts/bundle_sessions.py
 open index.html
 ```
 
-Browser tests were run with **Python Playwright** (`from playwright.sync_api import sync_playwright`, `chromium.launch(channel="chrome")`) against `file:///…/index.html`; Node Playwright is not installed. Squares: `#chessBoard button` index `(8 - rank) * 8 + file`. Playwright refuses to click `aria-disabled` links — use `force=True` for the disabled Lichess link. Tests write to the Playwright profile, not his Chrome.
+The browser suite lives in `tests/` and runs with `python3 -m pytest` (pytest + Python Playwright, `channel="chrome"`; Node Playwright is not installed). Squares: `#chessBoard button` index `(8 - rank) * 8 + file`. Playwright refuses to click `aria-disabled` links — use `force=True` for the disabled Lichess link. Tests that need `sessions/private/` skip themselves in a checkout without it.
 
 ---
 
