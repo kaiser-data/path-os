@@ -239,6 +239,17 @@
   .sq.last { background-image: linear-gradient(var(--sq-last), var(--sq-last)); }
   .sq.sel { background-image: linear-gradient(var(--sq-sel), var(--sq-sel)); }
   .sq.sel.last { background-image: linear-gradient(var(--sq-sel), var(--sq-sel)); }
+  .drill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin: 8px 0 22px; }
+  .drill { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px; border: 1px solid rgba(28,23,18,.2); background: rgba(255,255,255,.4); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+  .drill:hover { border-color: var(--ink); }
+  .drill.solved { border-color: var(--stamp); box-shadow: inset 0 -3px 0 var(--stamp); }
+  .drill.again { border-color: #a3262a; box-shadow: inset 0 -3px 0 #a3262a; }
+  .mini { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); width: 100%; aspect-ratio: 1; border: 2px solid #1a1a1a; }
+  .msq { position: relative; min-width: 0; min-height: 0; background-color: var(--sq-light); }
+  .msq.dark { background-color: var(--sq-dark); }
+  .msq svg { position: absolute; inset: 4%; width: 92%; height: 92%; display: block; }
+  .drill-title { font-size: .86rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .drill-meta { font-size: .78rem; color: var(--muted); }
   .sq svg {
     position: absolute;
     inset: 7%;
@@ -285,6 +296,18 @@
   .session-pick select { flex: 0 1 auto; width: auto; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
   .aagaard-log { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(28,23,18,.2); }
   .step-figure { margin: 0 0 12px; }
+  .btn.nav { min-width: 44px; padding-left: 10px; padding-right: 10px; }
+  .btn:disabled, .btn.disabled { opacity: .45; cursor: default; }
+  a.btn { display: inline-block; text-decoration: none; }
+  .variations { margin-top: 18px; }
+  .variations h3 { margin: 0 0 6px; }
+  .var-save { display: flex; gap: 8px; align-items: center; }
+  .var-save input { flex: 1 1 auto; min-width: 0; }
+  .var-save .btn { flex: 0 0 auto; white-space: nowrap; }
+  .var-line { font-variant-numeric: tabular-nums; }
+  #varPgn { width: 100%; margin-top: 8px; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+  .step-figure summary { cursor: pointer; font-size: .86rem; color: var(--muted); padding: 4px 0; }
+  .step-figure figure { margin: 6px 0 0; }
   .step-figure img { display: block; width: 100%; max-width: 340px; height: auto; background: #fff; border: 1px solid rgba(28,23,18,.2); }
   .step-figure figcaption { font-size: 13px; margin-top: 6px; }
   .step-figure .links { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
@@ -315,6 +338,7 @@
     <div class="tabs" role="tablist">
       <button type="button" role="tab" aria-selected="true" data-tab="today">Today</button>
       <button type="button" role="tab" data-tab="session">Board</button>
+      <button type="button" role="tab" data-tab="drills">Drills</button>
       <button type="button" role="tab" data-tab="week">Week</button>
       <button type="button" role="tab" data-tab="ladder">Ladder</button>
       <button type="button" role="tab" data-tab="stack">Stack</button>
@@ -367,8 +391,25 @@
             <div class="board" id="chessBoard" role="grid" aria-label="Chessboard"></div>
             <p class="muted" id="boardStatus" style="margin:8px 0 0"></p>
             <div class="row">
-              <button class="btn ghost" type="button" id="boardUndo">Undo</button>
+              <button class="btn ghost nav" type="button" id="boardStart" title="Start (↑)" aria-label="Start">⏮︎</button>
+              <button class="btn ghost nav" type="button" id="boardBack" title="Back (←)" aria-label="Back">◀︎</button>
+              <button class="btn ghost nav" type="button" id="boardFwd" title="Forward (→)" aria-label="Forward">▶︎</button>
+              <button class="btn ghost nav" type="button" id="boardEnd" title="End (↓)" aria-label="End">⏭︎</button>
               <button class="btn ghost" type="button" id="boardReset">Reset position</button>
+              <a class="btn ghost disabled" id="boardLichess" href="https://lichess.org/analysis" target="_blank" rel="noopener" aria-disabled="true">Lichess analysis</a>
+            </div>
+            <div class="variations">
+              <h3 class="serif">Variations</h3>
+              <div class="var-save">
+                <input id="varNote" type="text" placeholder="Comment (optional)">
+                <button class="btn ghost" type="button" id="varSave">Save line</button>
+              </div>
+              <ul class="loglist" id="varList"></ul>
+              <div class="row">
+                <button class="btn ghost" type="button" id="varCopyPgn" disabled>Copy PGN</button>
+                <span class="muted" id="varMsg"></span>
+              </div>
+              <textarea id="varPgn" class="hidden" rows="5" readonly></textarea>
             </div>
           </div>
           <div class="session-panel">
@@ -385,6 +426,13 @@
             </div>
           </div>
         </div>
+      </section>
+
+      <section id="panel-drills" class="hidden">
+        <h2 class="serif">Drills</h2>
+        <p class="muted">Every position at a glance. Click one to solve it on the board. Status comes from the Aagaard log: solved means a full line on the latest attempt.</p>
+        <p id="drillSummary"></p>
+        <div id="drillGrid"></div>
       </section>
 
       <section id="panel-week" class="hidden">
@@ -634,8 +682,19 @@
     games: [],
     blitz: {},
     checks: {},
-    aagaard: []
+    aagaard: [],
+    variations: {}
   }, load());
+
+  // Saved board lines per "sessionId:stepId", read and written by session-board.js.
+  window.pathVariations = {
+    get: (key) => ((state.variations || {})[key] || []).map(l => Object.assign({}, l, { moves: l.moves.slice() })),
+    set: (key, list) => {
+      state.variations = state.variations || {};
+      if (list.length) state.variations[key] = list; else delete state.variations[key];
+      save(state);
+    }
+  };
 
   const $ = (id) => document.getElementById(id);
 
@@ -697,6 +756,67 @@
       ? games.slice(0, 20).map(g => '<li><b>'+g.date+'</b> · '+g.result+' · '+g.tag+'<div class="muted">'+(g.event||"")+' — '+(g.note||"")+'</div></li>').join("")
       : '<li class="muted">No slow games logged. That is the FIDE problem.</li>';
     renderAagaard();
+    renderDrills();
+  }
+
+  // Drills overview: every bundled session with a `group`, as a mini board with its log status.
+  function drillStatus(s) {
+    const la = s.logAs || {};
+    if (la.kind !== "aagaard") return "";
+    let last = null;
+    (state.aagaard || []).forEach(a => {
+      if (Number(a.chapter) === la.chapter && Number(a.exercise) === la.exercise) last = a;
+    });
+    return !last ? "open" : last.result === "full" ? "solved" : "again";
+  }
+
+  function miniBoard(fen) {
+    const rows = String(fen || "").split(" ")[0].split("/");
+    let html = "";
+    rows.forEach((row, ri) => {
+      let fi = 0;
+      for (const ch of row) {
+        const n = /\d/.test(ch) ? Number(ch) : 1;
+        for (let k = 0; k < n; k++, fi++) {
+          const key = /\d/.test(ch) ? "" : (ch === ch.toUpperCase() ? "w" : "b") + ch.toUpperCase();
+          html += '<span class="msq' + ((ri + fi) % 2 ? " dark" : "") + '">' + ((key && (window.CHESS_PIECES || {})[key]) || "") + "</span>";
+        }
+      }
+    });
+    return '<div class="mini">' + html + "</div>";
+  }
+
+  function renderDrills() {
+    const host = $("drillGrid");
+    if (!host) return;
+    const all = window.PATH_SESSIONS || {};
+    const ids = Object.keys(all).filter(id => all[id].group);
+    if (!ids.length) {
+      host.innerHTML = '<p class="muted">No drills bundled. Private drills live in sessions/private/; run python3 scripts/bundle_sessions.py.</p>';
+      $("drillSummary").textContent = "";
+      return;
+    }
+    const groups = [];
+    ids.forEach(id => {
+      let g = groups.find(x => x.name === all[id].group);
+      if (!g) { g = { name: all[id].group, ids: [] }; groups.push(g); }
+      g.ids.push(id);
+    });
+    const counts = { open: 0, solved: 0, again: 0 };
+    host.innerHTML = groups.map(g => '<h3 class="serif">' + escHTML(g.name) + '</h3><div class="drill-grid">' + g.ids.map(id => {
+      const s = all[id];
+      const st = drillStatus(s);
+      if (st) counts[st]++;
+      const fen = s.startFen || ((s.steps || [])[0] || {}).fen;
+      const side = String(fen).split(" ")[1] === "b" ? "Black to move" : "White to move";
+      return '<button type="button" class="drill ' + st + '" data-id="' + escHTML(id) + '">' + miniBoard(fen)
+        + '<span class="drill-title">' + escHTML(s.title || id) + '</span><span class="drill-meta">' + side + (st ? " · " + st : "") + "</span></button>";
+    }).join("") + "</div>").join("");
+    $("drillSummary").textContent = counts.solved + " solved · " + counts.again + " again · " + counts.open + " open";
+    host.querySelectorAll("button.drill").forEach(b => b.addEventListener("click", () => {
+      if (window.pathOpenSession) window.pathOpenSession(b.dataset.id);
+      showTab("session");
+    }));
   }
 
   const AAGAARD_RESULT = { full: "full line", short: "stopped short", wrong: "wrong candidate", none: "no line" };
@@ -742,7 +862,7 @@
     const panel = $("panel-" + tab);
     if (panel) panel.classList.remove("hidden");
     document.querySelectorAll(".dossier-chrome").forEach(el => {
-      el.classList.toggle("hidden", tab === "session");
+      el.classList.toggle("hidden", tab === "session" || tab === "drills");
     });
     if (tab === "session" && window.initPathBoard) window.initPathBoard();
     if (location.hash.replace("#", "") !== tab) {

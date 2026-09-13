@@ -1,242 +1,161 @@
-# Handoff — Zwischenzug, next depth
+# Handoff — Zwischenzug
 
-Date: 2026-09-12  
-Repo: https://github.com/kaiser-data/zwischenzug  
-Workspace: `/Users/marty/grok_projects/chess_path_to`  
-Open: `open index.html` → **Board** tab
+Date: 2026-09-13
+Repo: https://github.com/kaiser-data/zwischenzug (**public**)
+Workspace: `/Users/marty/grok_projects/chess_path_to`
+Open: `open index.html` → **Board** or **Drills** tab
 
-This is for the next session. Do not restart from “2170 to GM, build an app.” The app exists. The gap is **calculation depth**.
-
----
-
-## 1. Who and the real bottleneck
-
-Martin Kaiser, Dr. GER, FIDE **4689640**, standard **2171**, no title.  
-Lichess [`emperor555`](https://lichess.org/@/emperor555): 12k blitz, peak 2319 (2020), now ~2085, **0 classical**.
-
-Locked: hard blitz cap (0–3), train first / crush later, ~10h/week, **compose existing tools** (Lichess, Chessable, ChessTempo, Aagaard). Do not rebuild a chess site.
-
-**The 2170 leak is not “doesn’t know a4 is best.”**  
-It is: **sees a reply he dislikes (`…a6`) and stops.**  
-GM-path work is forcing the next three moves.
+This replaces the 2026-09-12 handoff. The dossier exists and trains calculation. Do not restart, rename, or build a chess site.
 
 ---
 
-## 2. The game that is currently in the Board tab
+## 1. State right now
 
-[lichess.org/JB2bQpWt](https://lichess.org/JB2bQpWt) — 15+10, Kaiser White, Alapin, 1–0.
-
-Critical position after **19…Qa5**, White to move:
-
-```
-r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20
-```
-
-### What he played vs what he saw
-
-| He said / did | Truth |
+| | |
 |---|---|
-| Played **20.Red1** | Pseudo-activity. If Black does **not** grab a2, **…Rfd8** contests the file and White is worse (~−1.7). |
-| Opponent played **…Qxa2** | Blunder. **21.Ra1 22.Ra3** hunts the queen. That is why he won. |
-| Rejected **20.a4** because of **…a6** | a6 attacks Bb5. The bishop is not lost. |
-| Named **Bd7** and **Bg2** as reasons a4 is “complicated” | Correct instinct, incomplete line. **Bg2 is Black taking on g2**, not White playing Bg2. |
-| Candidate **Bd4** | Looks central. **20.Bd4 Qxa2** is ~−3: bishop left b2, no Ra1 trap. |
+| Last pushed commit | `d755ff1` Add Aagaard log, private book drills and a solve step type |
+| **Uncommitted** (tested, waiting for "push") | `index.html`, `session-board.js`, `CLAUDE.md`, `HANDOFF.md`: Drills tab, collapsible book diagram, saved variations + Copy PGN, board arrows ⏮ ◀ ▶ ⏭ and keys, Lichess analysis link |
+| Sessions in the repo | `JB2bQpWt` (game 1, won), `XbhWoWMi` (game 2, lost) |
+| Private, gitignored | `books/` (Aagaard PDF, page renders, `ch6/check.html`, `ch6/build_sessions.py`), `sessions/private/` (24 drills `aagaard-6-01` … `24` + `bundle.js`) |
+| Player's progress | Played through XbhWoWMi on the board. Aagaard ch.6 drills built; he confirmed all 24 transcribed positions match the book. He has not logged any exercise yet. |
 
-### Engine-backed tree (Stockfish 17, depth ~20–24, 2026-09-12)
-
-Binary: `/opt/homebrew/bin/stockfish` (installed this session). Re-run; do not treat these as gospel.
-
-**Root after 19…Qa5** (White):
-
-- **a4** ≈ **−0.17** (best)
-- Red1 / Ra1 / Rbd1 / Rbc1 ≈ **−1.6 to −1.8**
-
-**20.a4 a6 21.Bd7** ≈ equal (**−0.1 to 0.0**).
-
-Critical skip-line (must be in the trainer):
-
-```
-20.a4 a6 21.Bd7 Bxg2 22.e6!
-```
-
-- **22.e6** is the zwischenzug. Do not recapture first.
-- Sample: `22…Bd5 23.Bxg7 Kxg7 24.exf7` ≈ equal.
-- **22.Kxg2 Qd5+** is the worse recapture (check).
-- **20.a4 Bxg2 immediately** (no a6/Bd7) is a blunder: `21.Kxg2` ≈ **+5**. Do not mix this with the Bd7 line.
-
-**20.Bd4 Qxa2** ≈ **−3.2**. Queen not trapped.
-
-Other 21st moves after `a4 a6`: Bd7 best; Bc4 / Bd3 keep the piece, slacker.
+Commit rule: only when he says **go** or **push**. Before committing, grep the diff for book content (see §6).
 
 ---
 
-## 3. What is built
+## 2. Who and the leak
 
-One dossier: `index.html` + three JS files.
+Martin Kaiser, Dr., GER, FIDE 4689640, standard 2171, Lichess `emperor555`. Hard blitz cap 0–3/day, never trained. ~10 h/week.
 
-| File | Role |
-|---|---|
-| `index.html` | Chrome, tabs (Today, Board, Week, Ladder, Stack, Log, Crush), board CSS |
-| `session-board.js` | Four-step session for **this one game** |
-| `pieces.js` | CBurnett SVGs (Lichess set, public domain) |
-| `chess.min.js` | chess.js 0.10.3 UMD, legal moves only, **not an engine** |
-| `session.html` | Redirect to `index.html#session` |
+**The leak:** he calculates, then stops one ply early. Both games show it from opposite sides:
 
-Board tab steps today:
+| Game | What he saw | Where he stopped | Missed |
+|---|---|---|---|
+| [JB2bQpWt](https://lichess.org/JB2bQpWt) 15+10, 1–0 | `20.a4` | at `…a6`, the reply he **disliked** | `21.Bd7 Bxg2 22.e6!` (the zwischenzug) |
+| [XbhWoWMi](https://lichess.org/XbhWoWMi) 15+10, 0–1 | `15.Qg3 Nxf5 gxf5 Bxf5 Bxf5` | at his own recapture, the one he **liked** | ply 5 `…Qxf5` (d7 queen through empty e6) |
 
-1. **Diagnose** — candidates, “which Black move stopped you from a4”
-2. **Calculate a4** — must play `a4 a6 Bd7 Bxg2 e6` on the board before Lock
-3. **Trap** — game line `…Qxa2 Ra1`
-4. **Hunt** — `Ra3` + honest tag
+Game 2 also: clock 12:05 → 3:26 over moves 22–26 in a level position, then `32.Kg2?? Qg5+` with 1:42 left (Kh1/Kh2/Kf1 draw). Opening was fine (White better through move 13).
 
-Persistence: `localStorage` key `chess_path_to_v1` (week log / blitz). Board answers are **not** saved across refresh.
-
-Constraints still in force: **no engine in the browser**, no Lichess API from the HTML file, no ChessBase clone.
+His words — keep them in the UI, do not replace them with eval:
+- "Red1 is pseudo-activity; Black can put a rook on the file."
+- "I didn't play a4 because of a6."
+- "a4 is also complicated — you need Bd7, Bxg2."
+- Game 2: "I was seeing it but thought I can recapture and win a piece."
 
 ---
 
-## 4. What the player asked for next (do this, not cosmetics)
+## 3. What the app does
 
-> “For the training we need to go deeper you too much on the surface. Actually I didn’t play a4 because of a6. I need to learn to calculate further.”
+One file app: `index.html` + `session-board.js` + `pieces.js` (CBurnett) + `chess.min.js` (chess.js 0.10.3, legal moves only, **not an engine**) + `sessions/bundle.js` + `sessions/private/bundle.js`. Works from `file://`, no fetch.
 
-The next product is a **calculation desk**, not more tabs.
+**Tabs:** Today · Board · Drills · Week · Ladder · Stack · Log · Crush.
 
-### Slice A — Generalise the Board session (highest leverage)
+**Board tab**
+- Game picker (optgroups by `group`, newest first by `date`; `?session=<id>` wins).
+- Step types, all schema-driven (§4):
+  - default: questions + `mustPlay` on the board, optional `branches[]` (Next closed until every branch is played; after a lock the board opens the next unplayed branch and names it).
+  - `stopPly`: name the reply that stopped you, write the moves after it. Grades "that is ply 1", "you stopped at ply N", mix-up (plays a contrast board + key), illegal / off-line ply. Then the line must be played on the board.
+  - `solve`: write the whole line from move one; graded ply by ply against `solve.line` (wrong candidate / stopped at ply N / leaves the line / illegal or ambiguous SAN). First miss auto-logs to the Aagaard log via `logAs`.
+- The solution line stays hidden from the status bar until the written line passes.
+- Optional book diagram next to the board (`image`, `caption`, `links[]`), collapsible; open/closed is remembered (`localStorage` `zwischenzug_figure_open`).
+- Navigation ⏮ ◀ ▶ ⏭ and keys ← → (step), ↑ start, ↓ end. Back keeps the moves, forward replays; playing the remembered move keeps the rest, any other move drops it. Keys are ignored while typing.
+- **Variations:** Save line (+ comment) per `sessionId:stepId`; Show (loads it at the start position to step through), Copy (numbered SAN), Delete; **Copy PGN** merges all lines into main line + side lines with `[SetUp]`/`[FEN]` headers and comments. Verified with python-chess. Board stays playable after Lock.
+- **Lichess analysis** link: current board FEN on `lichess.org/analysis/standard/…` (`?color=black` if Black starts). Disabled until Lock — "engine after your own line".
 
-Hardcoded FENs and one forced line do not survive the next 15+10.
+**Drills tab:** every session with a `group` as a mini board + status from the Aagaard log (open / solved = full line on latest attempt / again). Click opens it on the Board (`window.pathOpenSession`).
 
-Build a **session schema** (JSON) so any slow game can load:
+**Log tab:** session log, slow games (Board sessions append via `pathLogGame`), **Aagaard log** (chapter, exercise, minutes, full / short at ply N / wrong / none, note; summary lists what still needs a drill), JSON export/import of all state.
 
-```json
-{
-  "id": "JB2bQpWt",
-  "url": "https://lichess.org/JB2bQpWt",
-  "startFen": "...",
-  "steps": [
-    {
-      "name": "Calculate a4",
-      "fen": "...",
-      "mustPlay": ["a4", "a6", "Bd7", "Bxg2", "e6"],
-      "questions": [...],
-      "key": "..."
-    }
-  ]
-}
-```
+**Storage:** `localStorage` `chess_path_to_v1` → `{sessions, games, blitz, checks, aagaard, variations}`. Page hooks: `pathLogGame`, `pathLogAagaard`, `pathVariations.get/set`, `pathOpenSession`, `initPathBoard`.
 
-Keep lock-until-the-line-is-on-the-board. That mechanic is the pedagogy.
-
-Importer (later): paste a Lichess URL or PGN → pick the critical ply → author 2–3 calculation steps. Authoring can be you + Stockfish **offline**; the HTML still has no engine.
-
-### Slice B — Candidate trees, not single lines
-
-Current step 2 forces **one** PV. He also needs:
-
-- After `a4 a6`, **three bishop retreats** (Bd7 / Bc4 / Bd3) with 2–3 ply each
-- **Bd4 Qxa2** as a failed candidate (why the trap dies)
-- **Red1 Rfd8** as the quiet refutation
-- Sibling: `a4 Bxg2??` vs `a4 a6 Bd7 Bxg2` (same capture, opposite eval)
-
-UI: a small move tree beside the board. Click a branch → board jumps to that FEN. He must write the next two moves **before** the branch label is revealed.
-
-### Slice C — “Stop ply” drill (the actual skill)
-
-Input: a candidate he rejected.  
-Output: “name the reply that scared you, then give **three more ply**.”
-
-Grade:
-
-- Stopped at ply 1 → fail (this week’s a6)
-- Reached the zwischenzug → pass
-- Mixed two lines (Bxg2 with vs without Bd7) → fail with a contrast board
-
-This can live as a reusable component on the Board tab.
-
-### Slice D — Stockfish as an **authoring** tool, not a toy in the page
-
-Mac binary already: `/opt/homebrew/bin/stockfish`.
-
-A small `scripts/author_session.py`:
-
-- FEN in
-- multipv 5, depth 20
-- print SAN tree
-- emit session JSON
-
-Never ship Stockfish WASM in v2 unless he asks. The leak is stopping early, not missing eval numbers.
-
-### Slice E — Log writes back into training
-
-After Hunt, auto-append to the Log:
-
-- result, tag `calculation`
-- note: `Stopped at a6; missed Bd7 Bxg2 e6`
-
-Today the Log is a separate form. Wire it.
-
-### Slice F — Second slow game
-
-He has almost no 15+10 volume. Next session: play **one** new 15+10, then author Slice A from **his** next critical position. Do not keep mining JB2bQpWt forever.
+Fixed along the way: board-logged games were overwritten by the next `save(state)` (now writes through the in-memory state).
 
 ---
 
-## 5. Do not do
+## 4. Session JSON reference
 
-- More chrome, more tabs, another piece set, another README pass
-- A puzzle rush, Puzzle Storm, or blitz trainer
-- “a4 is best” as a slogan without the a6-Bd7-Bxg2-e6 line
-- In-page engine that answers before he writes
-- ChessBase / opening-repertoire tourism
-- Crush / tournament calendar until the blitz cap holds for weeks
-
----
-
-## 6. How to verify
+Source of truth: `sessions/<lichessId>.json` (public) or `sessions/private/<id>.json` (book material). After every edit:
 
 ```bash
-open /Users/marty/grok_projects/chess_path_to/index.html
+python3 scripts/bundle_sessions.py   # writes sessions/bundle.js and sessions/private/bundle.js; fails on id clash
 ```
 
-Board tab: empty squares must be the **same size** as occupied (grid `8×8 1fr`).  
-Step 2 Lock stays dead until `a4 a6 Bd7 Bxg2 e6` is on the board.
+Session: `id`, `url`, `title`, `date` ("YYYY-MM-DD HH:MM"), `result`, `event`, `startFen`, `logNote`, optional `group`, optional `logAs: {kind: "aagaard", chapter, exercise}`, `steps[]`.
 
-Re-run engine (optional):
+Step: `id`, `name`, `title`, `prompt`, `fen` (full FEN with the real move number), `questions[]`, `key` (HTML shown after Lock), optional `type` (`stopPly` | `solve`), `mustPlay[]`, `branches[]`, `image`, `caption`, `links[] {label, href}`.
+
+- Branch: `id`, `label`, `mustPlay[]`, `key`.
+- Question: `name`, `label`, `type` = `text` | `textarea` | `select` | `triple`, optional `hint`, `names`, `options`.
+- `stopPly`: `candidate`, `scare` (ply 1), `continue[]`, optional `mixups[] {match[], line[], key}` — `match` is compared with the moves written after the scare; `line` is played from the step `fen`. Add a mix-up only when the engine shows a real difference.
+- `solve`: `line[]` (both sides, from the step `fen`).
+
+Keys are teaching sentences, never "cp=-17". `session-board.js` stays generic: a new game is new JSON + bundle, zero board JS edits unless a new step *type* is needed. Verify every `mustPlay` / `continue` / `mixups.line` / `solve.line` with python-chess before shipping (illegal SAN means Lock never opens).
+
+---
+
+## 5. Workflows
+
+### A. He pastes a new Lichess URL (highest priority)
+
+1. `curl -H "Accept: application/x-chess-pgn" "https://lichess.org/game/export/<first 8 chars>?evals=true&clocks=true"`. A 12-char URL is the player-specific link; the game id is the first 8. Refuse blitz as a main session (15+10 and slower is fine).
+2. Scan evals **and clocks**. Find the first position that went wrong for *him* — not the opponent's blunder, not the conversion.
+3. Ask him (AskUserQuestion) where it felt wrong and what was in his head. His answer changes the session: in game 2 he did not miss the capture, he stopped one ply short.
+4. Stockfish offline: `python3 scripts/author_session.py --fen 'FEN' --lines C1,C2,C3 --depth 20 --mpv 5`.
+5. Write `sessions/<id>.json`: stop-ply step → diagnose → calculate (≥3 branches: skipped line, the move he played, the sound alternative) → trap/clock step if there was a blunder → log step.
+6. Verify lines with python-chess, bundle, test in the browser (§7), then tell him what to do on the board.
+
+### B. Aagaard book drills (next chapter)
+
+Pipeline used for chapter 6; reuse for the next chapter he chooses. Everything stays in `books/` and `sessions/private/`.
+
+1. Render exercise and solution pages: `pdftoppm -f P -l P -r 200 -png -singlefile "<pdf>" books/chN/ex_pP` (PDF page = book page + 1 in this edition).
+2. Read the diagrams, write FENs; zoom into ambiguous pieces (black/white queens and bishops) at 400 dpi.
+3. Check legality with python-chess and replay the book's main line from each FEN (a transcription error almost always breaks legality). Stockfish top move vs book first move as a second signal.
+4. Build a comparison page (like `books/ch6/check.html`: book crop left, transcribed board right, ✓/✗ marks) and **have him confirm** before building drills.
+5. Solution lines: read the rendered solution pages, not `pdftotext` (the OCR garbles piece letters). Bold main line only.
+6. Adapt `books/ch6/build_sessions.py` → `sessions/private/aagaard-N-NN.json`, then bundle.
+
+Chapter 6 book pages: exercises p.152–153, 157, 159; solutions p.154–156, 158, 160–162. Exercises 6.7 and 6.16 are "hold the balance".
+
+---
+
+## 6. Guardrails
+
+- **Public repo.** Never put book positions, solution lines, diagrams, page text or the PDF into tracked files. Before any commit: `git diff | grep -iE "aagaard-[0-9]|<a known FEN or player name from the book>"` and `git ls-files | grep -E "^books/|^sessions/private/"` must be empty.
+- No Stockfish in the page. Engine is an offline authoring tool; the Lichess link opens only after Lock.
+- `file://` must keep working; a fresh clone lacks `sessions/private/bundle.js` (harmless 404 in the console) until `bundle_sessions.py` runs.
+- Board CSS: squares stay `grid-template-rows: repeat(8, minmax(0, 1fr))`.
+- UI copy is English; he writes German or English, answer in the language he used.
+
+---
+
+## 7. How to verify
 
 ```bash
-python3 -c "import chess, chess.engine; print('ok')"
-/opt/homebrew/bin/stockfish <<< "uci"
-```
-
----
-
-## 7. Player voice to keep
-
-He already has the right words. Use them in the UI:
-
-- “Red1 is **pseudo-activity**; Black can put a rook on the file.”
-- “I didn’t play a4 because of **a6**.”
-- “a4 is also complicated — you need **Bd7, Bxg2**.”
-
-The trainer’s job is to make him **finish those sentences with moves**, not to replace them with eval.
-
----
-
-## 8. First PR (landed 2026-09-12)
-
-Done:
-
-- `sessions/JB2bQpWt.json` is the source of truth
-- Board step 2 has four branches: `a4 a6 Bd7 Bxg2 e6` · `a4 Bxg2??` · `Bd4 Qxa2` · `Red1 Rfd8` — Next locked until all four are played
-- `scripts/author_session.py` + `scripts/bundle_sessions.py`
-- Hunt auto-appends to the Log via `pathLogGame`
-
-Not done: **no newer 15+10 than JB2bQpWt** (next rapid on the account is March 2026). Next session: play one new slow game, then:
-
-```
-python3 scripts/author_session.py --fen FEN --lines a4,Bd4,Red1 --depth 18 --json > sessions/NEWID.json
-# edit mustPlay / keys by hand — do not paste eval into the live page
+cd /Users/marty/grok_projects/chess_path_to
+node --check session-board.js
 python3 scripts/bundle_sessions.py
-open index.html?session=NEWID#session
+open index.html
 ```
 
-Stop when that new id loads without editing `session-board.js`.
+Browser tests were run with **Python Playwright** (`from playwright.sync_api import sync_playwright`, `chromium.launch(channel="chrome")`) against `file:///…/index.html`; Node Playwright is not installed. Squares: `#chessBoard button` index `(8 - rank) * 8 + file`. Playwright refuses to click `aria-disabled` links — use `force=True` for the disabled Lichess link. Tests write to the Playwright profile, not his Chrome.
+
+---
+
+## 8. Next (in order)
+
+1. **Push** the uncommitted work when he says so.
+2. **He solves Aagaard 6.1–6.6** on the board; misses show in Log → "to drill on the board" and as "again" in Drills.
+3. **`author_session.py --json`**: emit a stop-ply + diagnose + calculate skeleton with lines from PV1, so the next game starts from a draft. Keys still by hand.
+4. **Known limits worth fixing only if he hits them:**
+   - `solve` accepts only the book's main line; a sound side line he writes counts as leaving the line. Possible fix: optional `solve.alternatives[]`.
+   - Variations are per browser (`localStorage`); JSON export is the backup.
+   - The Today tab's day texts mention Aagaard ch.6 by hand.
+
+## 9. Do not do
+
+- Crush / tournament calendar, new piece set, chrome or README restyles
+- Puzzle Storm / ChessTempo clone, blitz trainer
+- Stockfish WASM or an eval bar in the page
+- Mining old 10+0 games as "the next session"
+- "a4 is best" slogans without the line to the end

@@ -9,7 +9,9 @@
       return String(all[b].date || "").localeCompare(String(all[a].date || ""));
     });
   }
+  let requestedId = null;
   function currentId() {
+    if (requestedId && sessions()[requestedId]) return requestedId;
     const q = new URLSearchParams(location.search).get("session");
     if (q && sessions()[q]) return q;
     return orderedIds()[0] || null;
@@ -27,6 +29,10 @@
   let stopPassed = false;
   let firstMiss = null;
   let stepStarted = 0;
+  // Moves stepped back over, newest last. Only valid for the Chess object they came from,
+  // so any `game = new Chess(...)` elsewhere drops them without extra bookkeeping.
+  let future = [];
+  let futureGame = null;
 
   function steps() { return (session && session.steps) || []; }
   function cur() { return steps()[step] || {}; }
@@ -75,16 +81,37 @@
     const turn = game.turn() === "w" ? "White" : "Black";
     const hist = game.history().join(" ");
     const need = mustPlayNow();
-    const extra = need.length ? " · need " + need.join(" ") : "";
-    document.getElementById("boardStatus").textContent = turn + " to move" + (hist ? " · " + hist : "") + extra;
+    const extra = need.length && !locked[step] ? " · need " + need.join(" ") : "";
+    const ahead = aheadMoves();
+    document.getElementById("boardStatus").textContent = turn + " to move" + (hist ? " · " + hist : "") +
+      (ahead.length ? " · ▶ " + ahead.length + " more" : "") + extra;
+    // Lichess analysis of the board as it stands; closed until Lock so the engine comes after his own line.
+    const lichess = document.getElementById("boardLichess");
+    if (lichess) {
+      const open = !!locked[step];
+      lichess.href = "https://lichess.org/analysis/standard/" + encodeURI(game.fen().replace(/ /g, "_")) +
+        (startOf(cur().fen).black ? "?color=black" : "");
+      lichess.classList.toggle("disabled", !open);
+      lichess.setAttribute("aria-disabled", open ? "false" : "true");
+      lichess.title = open ? "Open this board position in the Lichess analysis board" : "Lock first: your own line before the engine";
+    }
+    const back = document.getElementById("boardBack");
+    if (back) {
+      const atStart = !game.history().length;
+      document.getElementById("boardStart").disabled = atStart;
+      back.disabled = atStart;
+      document.getElementById("boardFwd").disabled = !ahead.length;
+      document.getElementById("boardEnd").disabled = !ahead.length;
+    }
   }
 
+  // The board stays playable after Lock so lines can be analysed and saved.
   function onSquare(sq) {
-    if (locked[step]) return;
     const piece = game.get(sq);
     if (selected) {
       const move = game.move({ from: selected, to: sq, promotion: "q" });
       selected = null;
+      if (move) keepFuture(move);
       if (!move && piece && piece.color === game.turn()) selected = sq;
       renderBoard();
       return;
@@ -160,7 +187,10 @@
     const lead = cur().type === "stopPly" ? renderStopPly(cur().stopPly || {})
       : cur().type === "solve" ? renderSolve(cur().solve || {}) : "";
     const figure = document.getElementById("boardFigure");
-    if (figure) figure.innerHTML = renderFigure(cur());
+    if (figure) {
+      figure.innerHTML = renderFigure(cur());
+      bindFigure(figure);
+    }
     document.getElementById("boardForm").innerHTML = lead + qs.map(renderQuestion).join("");
     document.getElementById("boardKey").classList.remove("show");
     document.getElementById("boardKey").innerHTML = "";
@@ -168,6 +198,7 @@
     document.getElementById("boardNext").disabled = !locked[step];
     document.getElementById("boardLock").disabled = locked[step];
     renderBranches();
+    renderVariations();
   }
 
   function norm(s) { return (s || "").replace(/\s+/g, "").replace(/[+#]/g, ""); }
@@ -188,7 +219,21 @@
     const links = (s.links || []).map(function (l) {
       return "<a href='" + esc(l.href) + "' target='_blank' rel='noopener'>" + esc(l.label) + "</a>";
     }).join("");
-    return "<figure class='step-figure'>" + img + "<figcaption>" + esc(s.caption || "") + (links ? "<span class='links'>" + links + "</span>" : "") + "</figcaption></figure>";
+    // Collapsible so the board can be the only diagram; the open/closed choice carries across steps.
+    return "<details class='step-figure'" + (figureOpen() ? " open" : "") + "><summary>" + (s.image ? "Book diagram" : "Source") + "</summary>" +
+      "<figure>" + img + "<figcaption>" + esc(s.caption || "") + (links ? "<span class='links'>" + links + "</span>" : "") + "</figcaption></figure></details>";
+  }
+
+  const FIGURE_KEY = "zwischenzug_figure_open";
+  function figureOpen() {
+    try { return localStorage.getItem(FIGURE_KEY) !== "0"; } catch (e) { return true; }
+  }
+  function bindFigure(host) {
+    const d = host && host.querySelector("details.step-figure");
+    if (!d) return;
+    d.addEventListener("toggle", function () {
+      try { localStorage.setItem(FIGURE_KEY, d.open ? "1" : "0"); } catch (e) { /* ignore */ }
+    });
   }
 
   // Solve: write the whole line from the first move; graded ply by ply against solve.line.
@@ -370,6 +415,7 @@
     document.getElementById("boardLock").disabled = true;
     document.getElementById("boardNext").disabled = step >= steps().length - 1;
     document.getElementById("boardErr").textContent = "";
+    renderBoard();
     const logAs = session.logAs || {};
     if (step === steps().length - 1 && logAs.kind === "aagaard" && typeof window.pathLogAagaard === "function") {
       // The first failed attempt decides the log entry; a clean first write is a full line.
@@ -449,6 +495,207 @@
     return true;
   }
 
+  // Board navigation: back keeps the moves, forward replays them, a new move drops them.
+  function aheadMoves() { return futureGame === game ? future : []; }
+
+  function keepFuture(move) {
+    const ahead = aheadMoves();
+    if (ahead.length && norm(ahead[ahead.length - 1]) === norm(move.san)) ahead.pop();
+    else future = [];
+  }
+
+  function stepBack() {
+    if (futureGame !== game) { future = []; futureGame = game; }
+    const m = game.undo();
+    if (!m) return false;
+    future.push(m.san);
+    selected = null;
+    return true;
+  }
+
+  function stepForward() {
+    const ahead = aheadMoves();
+    const san = ahead.pop();
+    if (!san) return false;
+    game.move(san, { sloppy: true });
+    selected = null;
+    return true;
+  }
+
+  function navigate(dir) {
+    if (!game) return;
+    if (dir === "back") stepBack();
+    else if (dir === "fwd") stepForward();
+    else if (dir === "start") { while (stepBack()) { /* rewind */ } }
+    else if (dir === "end") { while (stepForward()) { /* replay */ } }
+    renderBoard();
+  }
+
+  // Put a saved line on the board at the start position, ready to step through with ▶ / →.
+  function showLine(moves) {
+    game = new Chess(cur().fen);
+    futureGame = game;
+    future = moves.slice().reverse();
+    selected = null;
+    renderBoard();
+  }
+
+  // Saved variations: lines played on the board, stored per session step through
+  // window.pathVariations (index.html state, so they are part of the JSON export).
+  function varKey() { return (sessionId || "") + ":" + (cur().id || step); }
+  function varGet() { return window.pathVariations ? window.pathVariations.get(varKey()) : []; }
+  function varSet(list) { if (window.pathVariations) window.pathVariations.set(varKey(), list); }
+
+  function startOf(fen) {
+    const p = String(fen || "").split(" ");
+    return { n: Number(p[5]) || 1, black: p[1] === "b" };
+  }
+
+  function numbered(fen, moves) {
+    const s = startOf(fen);
+    let n = s.n, black = s.black;
+    return moves.map(function (m, i) {
+      const t = black ? (i === 0 ? n + "... " + m : m) : n + ". " + m;
+      if (black) n++;
+      black = !black;
+      return t;
+    }).join(" ");
+  }
+
+  // Merge saved lines into one tree: the first saved line is the main line, later ones become side lines.
+  function pgnMoves(fen, lines) {
+    const root = { kids: [], notes: [] };
+    lines.forEach(function (l) {
+      let node = root;
+      l.moves.forEach(function (m) {
+        let k = node.kids.find(function (x) { return x.san === m; });
+        if (!k) { k = { san: m, kids: [], notes: [] }; node.kids.push(k); }
+        node = k;
+      });
+      if (l.note && node !== root) node.notes.push(l.note);
+    });
+    const s = startOf(fen);
+    function tok(node, ply, force) {
+      const black = s.black ? ply % 2 === 0 : ply % 2 === 1;
+      const n = s.n + Math.floor((ply + (s.black ? 1 : 0)) / 2);
+      const num = !black ? n + ". " : (force ? n + "... " : "");
+      return num + node.san + node.notes.map(function (c) { return " {" + c.replace(/[{}]/g, "") + "}"; }).join("");
+    }
+    function walk(node, ply, force) {
+      if (!node.kids.length) return "";
+      const main = node.kids[0];
+      let out = tok(main, ply, force);
+      node.kids.slice(1).forEach(function (a) {
+        out += " (" + tok(a, ply, true) + after(a, ply + 1, a.notes.length > 0) + ")";
+      });
+      return out + after(main, ply + 1, node.kids.length > 1 || main.notes.length > 0);
+    }
+    function after(node, ply, force) {
+      const r = walk(node, ply, force);
+      return r ? " " + r : "";
+    }
+    return walk(root, 0, true);
+  }
+
+  function pgnText(fen, lines) {
+    const tag = function (k, v) { return "[" + k + " \"" + String(v).replace(/"/g, "'") + "\"]\n"; };
+    return tag("Event", (session && session.title) || sessionId || "Zwischenzug") +
+      (session && session.url ? tag("Site", session.url) : "") +
+      tag("Annotator", "Zwischenzug") + tag("SetUp", "1") + tag("FEN", fen) + tag("Result", "*") +
+      "\n" + pgnMoves(fen, lines) + " *\n";
+  }
+
+  function copyText(text) {
+    const msg = document.getElementById("varMsg");
+    function done(ok) { if (msg) msg.textContent = ok ? "Copied." : "Copy blocked: select the text below and copy it."; }
+    function fallback() {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      ta.remove();
+      done(ok);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  function renderVariations() {
+    const list = document.getElementById("varList");
+    if (!list) return;
+    const lines = varGet();
+    const fen = cur().fen;
+    list.innerHTML = lines.length
+      ? lines.map(function (l, i) {
+          return "<li><span class='var-line'>" + esc(numbered(fen, l.moves)) + "</span>" +
+            (l.note ? "<div class='muted'>" + esc(l.note) + "</div>" : "") +
+            "<div class='row'><button type='button' class='btn ghost' data-var-show='" + i + "'>Show</button>" +
+            "<button type='button' class='btn ghost' data-var-copy='" + i + "'>Copy</button>" +
+            "<button type='button' class='btn ghost' data-var-del='" + i + "'>Delete</button></div></li>";
+        }).join("")
+      : "<li class='muted'>No saved lines for this position. Play one on the board, then Save line.</li>";
+    document.getElementById("varCopyPgn").disabled = !lines.length;
+    const pgn = document.getElementById("varPgn");
+    if (pgn && !pgn.classList.contains("hidden")) pgn.value = lines.length ? pgnText(fen, lines) : "";
+    list.querySelectorAll("[data-var-copy]").forEach(function (b) {
+      b.addEventListener("click", function () { copyText(numbered(fen, lines[Number(b.dataset.varCopy)].moves)); });
+    });
+    list.querySelectorAll("[data-var-show]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        showLine(lines[Number(b.dataset.varShow)].moves);
+        document.getElementById("varMsg").textContent = "On the board. Step through with ▶ or the → key.";
+      });
+    });
+    list.querySelectorAll("[data-var-del]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        const next = varGet();
+        next.splice(Number(b.dataset.varDel), 1);
+        varSet(next);
+        renderVariations();
+      });
+    });
+  }
+
+  function saveVariation() {
+    const msg = document.getElementById("varMsg");
+    const moves = game.history();
+    if (!moves.length) {
+      msg.textContent = "Play a line on the board first.";
+      return;
+    }
+    const noteEl = document.getElementById("varNote");
+    const note = noteEl.value.trim();
+    const lines = varGet();
+    const same = lines.find(function (l) { return l.moves.join(" ") === moves.join(" "); });
+    if (same) {
+      if (note) same.note = note;
+    } else {
+      lines.push({ moves: moves, note: note, ts: Date.now() });
+    }
+    varSet(lines);
+    noteEl.value = "";
+    msg.textContent = same ? "Already saved" + (note ? "; comment updated." : ".") : "Saved.";
+    renderVariations();
+  }
+
+  // Open a session from elsewhere in the page (e.g. the Drills overview). Before the board
+  // has initialised, remember the id so the first initPathBoard picks it.
+  window.pathOpenSession = function (id) {
+    if (!sessions()[id]) return;
+    if (!ready) {
+      requestedId = id;
+      return;
+    }
+    loadSession(id);
+  };
+
   window.initPathBoard = function () {
     if (ready) {
       renderBoard();
@@ -468,18 +715,47 @@
         } catch (e) { /* ignore */ }
       });
     }
-    document.getElementById("boardUndo").addEventListener("click", function () {
-      if (locked[step]) return;
-      game.undo();
-      selected = null;
-      renderBoard();
+    [["boardStart", "start"], ["boardBack", "back"], ["boardFwd", "fwd"], ["boardEnd", "end"]].forEach(function (pair) {
+      const btn = document.getElementById(pair[0]);
+      if (btn) btn.addEventListener("click", function () { navigate(pair[1]); });
+    });
+    // Arrow keys like Lichess: ← → step, ↑ start, ↓ end. Ignored while typing or off the Board tab.
+    document.addEventListener("keydown", function (e) {
+      const panel = document.getElementById("panel-session");
+      if (!panel || panel.classList.contains("hidden")) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || "")) return;
+      const dir = { ArrowLeft: "back", ArrowRight: "fwd", ArrowUp: "start", ArrowDown: "end", Home: "start", End: "end" }[e.key];
+      if (!dir) return;
+      e.preventDefault();
+      navigate(dir);
     });
     document.getElementById("boardReset").addEventListener("click", function () {
-      if (locked[step]) return;
       game = new Chess(cur().fen);
       selected = null;
       renderBoard();
     });
+    const lichessLink = document.getElementById("boardLichess");
+    if (lichessLink) {
+      lichessLink.addEventListener("click", function (e) {
+        if (!lichessLink.classList.contains("disabled")) return;
+        e.preventDefault();
+        document.getElementById("boardErr").textContent = "Lichess analysis opens after Lock. Write your own line first.";
+      });
+    }
+    const varSave = document.getElementById("varSave");
+    if (varSave) {
+      varSave.addEventListener("click", saveVariation);
+      document.getElementById("varCopyPgn").addEventListener("click", function () {
+        const lines = varGet();
+        if (!lines.length) return;
+        const text = pgnText(cur().fen, lines);
+        const pgn = document.getElementById("varPgn");
+        pgn.value = text;
+        pgn.classList.remove("hidden");
+        copyText(text);
+      });
+    }
     document.getElementById("boardLock").addEventListener("click", lockStep);
     document.getElementById("boardNext").addEventListener("click", function () {
       if (step < steps().length - 1 && locked[step]) loadStep(step + 1);
