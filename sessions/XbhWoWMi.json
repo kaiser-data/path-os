@@ -9,23 +9,44 @@
   "logNote": "Saw Nxf5 gxf5 Bxf5 Bxf5 and stopped on my own capture; missed …Qxf5 (ply 5). Clock 12:05 → 3:26 over moves 22–26, then 32.Kg2?? Qg5+.",
   "steps": [
     {
+      "id": "threeply",
+      "type": "stopPly",
+      "name": "1 Three ply",
+      "title": "After 14…Nd6, White to move",
+      "prompt": "You played 15.Qg3. Name the reply you had to calculate, then write every move until nothing can take back.",
+      "fen": "r4rk1/pppq1ppp/2nn2b1/3p1NB1/3P2P1/2PB1P2/P1P4P/R3QRK1 w - - 5 15",
+      "stopPly": {
+        "candidate": "Qg3",
+        "scare": "Nxf5",
+        "continue": ["gxf5", "Bxf5", "Bxf5", "Qxf5"],
+        "mixups": [
+          {
+            "match": ["gxf5", "Bxf5", "Bf6"],
+            "line": ["Qg3", "Nxf5", "gxf5", "Bxf5", "Bf6"],
+            "key": "<p class='bad'>That is the game: you saw …Qxf5 at the board, one move too late, and went Bf6 (~−2). The drill is to finish the captures before 15.Qg3, not after.</p>"
+          }
+        ]
+      },
+      "questions": [],
+      "key": "<p class='ok'>Ply 5 is <b>…Qxf5</b>: the d7 queen through the empty e6. Three attackers, two defenders, a pawn down (~−3). You had ply 1 to 4 in the game. The fifth is the drill.</p>"
+    },
+    {
       "id": "diagnose",
-      "name": "1 Diagnose",
+      "name": "2 Diagnose",
       "title": "After 14…Nd6, White to move",
       "prompt": "Count f5 before you move. Count to the last capture, not to the one you like.",
       "fen": "r4rk1/pppq1ppp/2nn2b1/3p1NB1/3P2P1/2PB1P2/P1P4P/R3QRK1 w - - 5 15",
       "mustPlay": [],
       "questions": [
-        { "name": "material", "label": "1.1 Material", "hint": "Who is up, and by how much?", "type": "text" },
-        { "name": "attackers", "label": "1.2 Black pieces that hit f5", "hint": "There are three.", "type": "triple", "names": ["a1", "a2", "a3"] },
-        { "name": "defenders", "label": "1.3 White pieces that defend f5", "hint": "How many, and which?", "type": "text" },
-        { "name": "stop", "label": "1.4 You saw Nxf5 gxf5 Bxf5 Bxf5. Which Black move comes next?", "hint": "Ply 5.", "type": "text" }
+        { "name": "material", "label": "2.1 Material", "hint": "Who is up, and by how much?", "type": "text" },
+        { "name": "attackers", "label": "2.2 Black pieces that hit f5", "hint": "There are three.", "type": "triple", "names": ["a1", "a2", "a3"] },
+        { "name": "defenders", "label": "2.3 White pieces that defend f5", "hint": "How many, and which?", "type": "text" }
       ],
       "key": "<p><b>Material:</b> equal. The opening was not the problem: you were better through move 13 (8.O-O and 13.Bg5 let some of it go, nothing more).</p><p><b>f5:</b> three attackers — Nd6, Bg6 and <b>Qd7</b> — against two defenders, g4 and Bd3. The queen looks through e6, which has been empty since 4.exd5 exd5.</p><p>You did not stop at a scary reply this time. You stopped at <b>your own recapture</b>. Ply 5 is <b>…Qxf5</b>.</p>"
     },
     {
       "id": "calculate",
-      "name": "2 Calculate",
+      "name": "3 Calculate",
       "title": "Four lines from move 15. Count to the end of the captures.",
       "prompt": "Open a branch. Play every move, including the one you stopped before. Lock that branch. Next stays closed until all four are done.",
       "fen": "r4rk1/pppq1ppp/2nn2b1/3p1NB1/3P2P1/2PB1P2/P1P4P/R3QRK1 w - - 5 15",
@@ -63,13 +84,13 @@
     },
     {
       "id": "trap",
-      "name": "3 Clock",
+      "name": "4 Clock",
       "title": "After 31…Qe3+, White to move (1:42 left)",
       "prompt": "Three king moves draw. One loses. Play the game move and the check that punishes it.",
       "fen": "6n1/ppp3k1/5pPp/3Q4/3P4/2PBq3/P1P5/6K1 w - - 1 32",
       "questions": [
-        { "name": "check", "label": "3.1 After 32.Kg2, which check wins?", "type": "text" },
-        { "name": "safe", "label": "3.2 Three king moves that draw", "type": "triple", "names": ["k1", "k2", "k3"] }
+        { "name": "check", "label": "4.1 After 32.Kg2, which check wins?", "type": "text" },
+        { "name": "safe", "label": "4.2 Three king moves that draw", "type": "triple", "names": ["k1", "k2", "k3"] }
       ],
       "branches": [
         {
@@ -89,21 +110,21 @@
     },
     {
       "id": "log",
-      "name": "4 Log",
+      "name": "5 Log",
       "title": "Tag the loss honestly",
       "prompt": "Three moments. Pick the one that cost the game first.",
       "fen": "r4rk1/pppq1ppp/2nn2b1/3p1NB1/3P2P1/2PB1P2/P1P4P/R3QRK1 w - - 5 15",
       "mustPlay": [],
       "questions": [
-        { "name": "why", "label": "4.1 Why did you lose?", "type": "select", "options": [
+        { "name": "why", "label": "5.1 Why did you lose?", "type": "select", "options": [
           { "value": "", "label": "choose" },
           { "value": "count", "label": "15.Qg3: I stopped at my own Bxf5 and missed …Qxf5" },
           { "value": "time", "label": "The clock: 12:05 → 3:26 over moves 22–26 in a level position" },
           { "value": "kg2", "label": "32.Kg2?? in time trouble" },
           { "value": "all", "label": "All three, in that order" }
         ]},
-        { "name": "minutes", "label": "4.2 Moves 22–26 cost nine minutes at about equal. What were you calculating?", "type": "textarea" },
-        { "name": "tag", "label": "4.3 Tag", "type": "select", "options": [
+        { "name": "minutes", "label": "5.2 Moves 22–26 cost nine minutes at about equal. What were you calculating?", "type": "textarea" },
+        { "name": "tag", "label": "5.3 Tag", "type": "select", "options": [
           { "value": "", "label": "choose" },
           { "value": "calculation", "label": "calculation" },
           { "value": "time", "label": "time" },
@@ -111,7 +132,7 @@
           { "value": "opening", "label": "opening" },
           { "value": "clean", "label": "clean" }
         ]},
-        { "name": "note", "label": "4.4 Log note", "type": "textarea" }
+        { "name": "note", "label": "5.4 Log note", "type": "textarea" }
       ],
       "key": "<p>Tag <b>calculation</b>. Move 15 put you two pawns' worth down, and the clock and Kg2 came after it. Last week you stopped at the reply you disliked (…a6). This week you stopped at the recapture you liked (Bxf5). Same leak. Three more ply.</p>"
     }

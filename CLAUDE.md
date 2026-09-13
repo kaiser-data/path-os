@@ -3,7 +3,7 @@
 You are continuing **Zwischenzug** (`kaiser-data/zwischenzug`).  
 Do **not** restart. Do **not** rename. Do **not** build a chess site.
 
-Martin (FIDE 2171, Lichess `emperor555`) is about to play **another slow game**. When he pastes a Lichess URL, that game is the next session. Until then, build the ingest path and the stop-ply drill.
+Martin (FIDE 2171, Lichess `emperor555`) is about to play **another slow game**. When he pastes a Lichess URL, that game is the next session. Ingest path, game picker and stop-ply drill are built (2026-09-13); next is `author_session.py --json`.
 
 Repo: https://github.com/kaiser-data/zwischenzug  
 Local: `/Users/marty/grok_projects/chess_path_to`  
@@ -14,7 +14,7 @@ Player: Kaiser, Martin, Dr. GER, FIDE 4689640
 
 ## Product in one sentence
 
-A local dossier that forces **three more ply** after the move that scared him. This week that scare was `…a6` against `20.a4`. The name **Zwischenzug** is `22.e6` — recapture last.
+A local dossier that forces **three more ply** after the move that scared him. Game 1 (JB2bQpWt, won): the scare was `…a6` against `20.a4`. The name **Zwischenzug** is `22.e6` — recapture last. Game 2 (XbhWoWMi, lost): he saw `15.Qg3 Nxf5 gxf5 Bxf5 Bxf5` and stopped on **his own** capture, missing ply 5 `…Qxf5`. Same leak from the other side: he stops at the reply he dislikes *or* the recapture he likes.
 
 ## Locked constraints
 
@@ -49,6 +49,10 @@ His words — use them, don’t replace them:
 | Packed for `file://` | `sessions/bundle.js` ← `python3 scripts/bundle_sessions.py` |
 | Offline Stockfish tree | `python3 scripts/author_session.py --fen FEN --lines a4,Bd4,Red1 --depth 18` |
 | Hunt → Log | `window.pathLogGame` |
+| Second game (15.Qg3, 32.Kg2??) | `sessions/XbhWoWMi.json` |
+| Game picker, newest first by optional `date`; `?session=` wins | Board tab, `session-board.js` |
+| Stop-ply step type (step 1 in both sessions) | `type: "stopPly"` in session JSON |
+| After a branch locks, board opens the next unplayed line | `session-board.js` |
 
 Board step 2 on JB2bQpWt already has four branches. Next stays closed until all four are played on the board:
 
@@ -115,7 +119,7 @@ python3 scripts/author_session.py --fen 'FEN' --lines CAND1,CAND2 --depth 18 --m
 
 If the new game is blitz: refuse to author it as the main session.
 
-### 1. Stop-ply drill (new step type — do this if no URL yet)
+### 1. Stop-ply drill — DONE (step 1 in both sessions)
 
 The actual skill: *name the scare, then three more ply.*
 
@@ -126,7 +130,9 @@ Add optional `type: "stopPly"` on a step (or a field `stopPly` on diagnose):
   "candidate": "a4",
   "scare": "a6",
   "continue": ["Bd7", "Bxg2", "e6"],
-  "mixup": ["Bxg2"]
+  "mixups": [
+    { "match": ["Bxg2"], "line": ["a4", "Bxg2", "Kxg2"], "key": "<p class='bad'>…</p>" }
+  ]
 }
 ```
 
@@ -140,7 +146,9 @@ Board: after he names the scare, require `candidate + scare + continue` on the b
 
 Keep this **schema-driven**. JB2bQpWt gets a stop-ply step; the next game reuses it.
 
-### 2. Session picker
+As built: `scare` counts as ply 1. `match` is compared against the moves he writes after the scare, and `line` is played from the step `fen` to make the comparison board. The grader also fails a line that stops short ("You stopped at ply N"), an illegal move, or a move that leaves the line. `mustPlay` stays hidden in the status bar until the written line passes. Add a `mixups` entry only when the engine shows a real difference: in XbhWoWMi, recapturing with the bishop first was the same −3, so it is not a mixup there.
+
+### 2. Session picker — DONE
 
 If `Object.keys(PATH_SESSIONS).length > 1`, show a select on the Board tab. Changing it reloads `initPathBoard` (today `ready` is a one-shot; you will need a reset path).
 

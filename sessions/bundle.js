@@ -10,8 +10,56 @@ window.PATH_SESSIONS = {
     "logNote": "Stopped at a6; missed Bd7 Bxg2 e6. Red1 is pseudo-activity vs Rfd8.",
     "steps": [
       {
+        "id": "threeply",
+        "type": "stopPly",
+        "name": "1 Three ply",
+        "title": "After 19\u2026Qa5, White to move",
+        "prompt": "You looked at 20.a4 and did not play it. Name the reply that stopped you, then keep going past it.",
+        "fen": "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20",
+        "stopPly": {
+          "candidate": "a4",
+          "scare": "a6",
+          "continue": [
+            "Bd7",
+            "Bxg2",
+            "e6"
+          ],
+          "mixups": [
+            {
+              "match": [
+                "Bxg2"
+              ],
+              "line": [
+                "a4",
+                "Bxg2",
+                "Kxg2"
+              ],
+              "key": "<p class='bad'>That skips 21.Bd7. Without \u2026a6 and Bd7 first, \u2026Bxg2 is just a loose capture: 21.Kxg2 and White is winning (~+5). Same capture, different position.</p>"
+            },
+            {
+              "match": [
+                "Bd7",
+                "Bxg2",
+                "Kxg2"
+              ],
+              "line": [
+                "a4",
+                "a6",
+                "Bd7",
+                "Bxg2",
+                "Kxg2",
+                "Qd5+"
+              ],
+              "key": "<p class='bad'>Recapture first and \u2026Qd5+ forks the king and d7. It stays roughly level, but you are the one scrambling. <b>22.e6</b> comes first \u2014 the in-between move this dossier is named after.</p>"
+            }
+          ]
+        },
+        "questions": [],
+        "key": "<p class='ok'>\u2026a6 is ply 1, not the end. 21.Bd7 Bxg2 <b>22.e6!</b> and it is level. The reply you disliked was not a refutation.</p>"
+      },
+      {
         "id": "diagnose",
-        "name": "1 Diagnose",
+        "name": "2 Diagnose",
         "title": "After 19\u2026Qa5, White to move",
         "prompt": "Candidates only. Do not stop at the first reply you dislike.",
         "fen": "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20",
@@ -19,37 +67,31 @@ window.PATH_SESSIONS = {
         "questions": [
           {
             "name": "material",
-            "label": "1.1 Material",
+            "label": "2.1 Material",
             "hint": "Who is up, and by how much?",
             "type": "text"
           },
           {
             "name": "why",
-            "label": "1.2 Why did it feel worse?",
+            "label": "2.2 Why did it feel worse?",
             "type": "textarea"
           },
           {
             "name": "c1",
-            "label": "1.3 Three candidate moves",
+            "label": "2.3 Three candidate moves",
             "type": "triple",
             "names": [
               "c1",
               "c2",
               "c3"
             ]
-          },
-          {
-            "name": "stop",
-            "label": "1.4 You did not play a4. Which Black move stopped you?",
-            "hint": "e.g. a6",
-            "type": "text"
           }
         ],
         "key": "<p><b>Material:</b> Black a pawn up. The minus is also the queen on a5 and the bishops vs uncoordinated White.</p><p>If you stopped at <b>\u2026a6</b>, that is the leak. Next step is the line past a6 \u2014 not Red1.</p>"
       },
       {
         "id": "calculate",
-        "name": "2 Calculate",
+        "name": "3 Calculate",
         "title": "Four lines. Same capture is not the same eval.",
         "prompt": "Open a branch. Play the moves on the board. Lock that branch. Next stays closed until all four are done.",
         "fen": "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R2R1K1 w - - 2 20",
@@ -121,7 +163,7 @@ window.PATH_SESSIONS = {
       },
       {
         "id": "trap",
-        "name": "3 Trap",
+        "name": "4 Trap",
         "title": "The game: after 20.Red1, Black to move",
         "prompt": "He grabbed. Play \u2026Qxa2 then Ra1.",
         "fen": "r4rk1/p3ppbp/1p4p1/qB1bP3/8/7P/PB2QPP1/1R1R2K1 b - - 3 20",
@@ -146,7 +188,7 @@ window.PATH_SESSIONS = {
       },
       {
         "id": "hunt",
-        "name": "4 Hunt",
+        "name": "5 Hunt",
         "title": "After 21\u2026Qb3, White to move",
         "prompt": "Play the hunt move, then tag the game honestly.",
         "fen": "r4rk1/p3ppbp/1p4p1/1B1bP3/8/1q5P/1B2QPP1/R2R2K1 w - - 2 22",
@@ -156,7 +198,7 @@ window.PATH_SESSIONS = {
         "questions": [
           {
             "name": "why",
-            "label": "4.1 Why did you win?",
+            "label": "5.1 Why did you win?",
             "type": "select",
             "options": [
               {
@@ -179,12 +221,12 @@ window.PATH_SESSIONS = {
           },
           {
             "name": "next",
-            "label": "4.2 Next time, move 20 is",
+            "label": "5.2 Next time, move 20 is",
             "type": "text"
           },
           {
             "name": "tag",
-            "label": "4.3 Tag",
+            "label": "5.3 Tag",
             "type": "select",
             "options": [
               {
@@ -215,7 +257,7 @@ window.PATH_SESSIONS = {
           },
           {
             "name": "note",
-            "label": "4.4 Log note",
+            "label": "5.4 Log note",
             "type": "textarea"
           }
         ],
@@ -234,8 +276,45 @@ window.PATH_SESSIONS = {
     "logNote": "Saw Nxf5 gxf5 Bxf5 Bxf5 and stopped on my own capture; missed \u2026Qxf5 (ply 5). Clock 12:05 \u2192 3:26 over moves 22\u201326, then 32.Kg2?? Qg5+.",
     "steps": [
       {
+        "id": "threeply",
+        "type": "stopPly",
+        "name": "1 Three ply",
+        "title": "After 14\u2026Nd6, White to move",
+        "prompt": "You played 15.Qg3. Name the reply you had to calculate, then write every move until nothing can take back.",
+        "fen": "r4rk1/pppq1ppp/2nn2b1/3p1NB1/3P2P1/2PB1P2/P1P4P/R3QRK1 w - - 5 15",
+        "stopPly": {
+          "candidate": "Qg3",
+          "scare": "Nxf5",
+          "continue": [
+            "gxf5",
+            "Bxf5",
+            "Bxf5",
+            "Qxf5"
+          ],
+          "mixups": [
+            {
+              "match": [
+                "gxf5",
+                "Bxf5",
+                "Bf6"
+              ],
+              "line": [
+                "Qg3",
+                "Nxf5",
+                "gxf5",
+                "Bxf5",
+                "Bf6"
+              ],
+              "key": "<p class='bad'>That is the game: you saw \u2026Qxf5 at the board, one move too late, and went Bf6 (~\u22122). The drill is to finish the captures before 15.Qg3, not after.</p>"
+            }
+          ]
+        },
+        "questions": [],
+        "key": "<p class='ok'>Ply 5 is <b>\u2026Qxf5</b>: the d7 queen through the empty e6. Three attackers, two defenders, a pawn down (~\u22123). You had ply 1 to 4 in the game. The fifth is the drill.</p>"
+      },
+      {
         "id": "diagnose",
-        "name": "1 Diagnose",
+        "name": "2 Diagnose",
         "title": "After 14\u2026Nd6, White to move",
         "prompt": "Count f5 before you move. Count to the last capture, not to the one you like.",
         "fen": "r4rk1/pppq1ppp/2nn2b1/3p1NB1/3P2P1/2PB1P2/P1P4P/R3QRK1 w - - 5 15",
@@ -243,13 +322,13 @@ window.PATH_SESSIONS = {
         "questions": [
           {
             "name": "material",
-            "label": "1.1 Material",
+            "label": "2.1 Material",
             "hint": "Who is up, and by how much?",
             "type": "text"
           },
           {
             "name": "attackers",
-            "label": "1.2 Black pieces that hit f5",
+            "label": "2.2 Black pieces that hit f5",
             "hint": "There are three.",
             "type": "triple",
             "names": [
@@ -260,14 +339,8 @@ window.PATH_SESSIONS = {
           },
           {
             "name": "defenders",
-            "label": "1.3 White pieces that defend f5",
+            "label": "2.3 White pieces that defend f5",
             "hint": "How many, and which?",
-            "type": "text"
-          },
-          {
-            "name": "stop",
-            "label": "1.4 You saw Nxf5 gxf5 Bxf5 Bxf5. Which Black move comes next?",
-            "hint": "Ply 5.",
             "type": "text"
           }
         ],
@@ -275,7 +348,7 @@ window.PATH_SESSIONS = {
       },
       {
         "id": "calculate",
-        "name": "2 Calculate",
+        "name": "3 Calculate",
         "title": "Four lines from move 15. Count to the end of the captures.",
         "prompt": "Open a branch. Play every move, including the one you stopped before. Lock that branch. Next stays closed until all four are done.",
         "fen": "r4rk1/pppq1ppp/2nn2b1/3p1NB1/3P2P1/2PB1P2/P1P4P/R3QRK1 w - - 5 15",
@@ -341,19 +414,19 @@ window.PATH_SESSIONS = {
       },
       {
         "id": "trap",
-        "name": "3 Clock",
+        "name": "4 Clock",
         "title": "After 31\u2026Qe3+, White to move (1:42 left)",
         "prompt": "Three king moves draw. One loses. Play the game move and the check that punishes it.",
         "fen": "6n1/ppp3k1/5pPp/3Q4/3P4/2PBq3/P1P5/6K1 w - - 1 32",
         "questions": [
           {
             "name": "check",
-            "label": "3.1 After 32.Kg2, which check wins?",
+            "label": "4.1 After 32.Kg2, which check wins?",
             "type": "text"
           },
           {
             "name": "safe",
-            "label": "3.2 Three king moves that draw",
+            "label": "4.2 Three king moves that draw",
             "type": "triple",
             "names": [
               "k1",
@@ -390,7 +463,7 @@ window.PATH_SESSIONS = {
       },
       {
         "id": "log",
-        "name": "4 Log",
+        "name": "5 Log",
         "title": "Tag the loss honestly",
         "prompt": "Three moments. Pick the one that cost the game first.",
         "fen": "r4rk1/pppq1ppp/2nn2b1/3p1NB1/3P2P1/2PB1P2/P1P4P/R3QRK1 w - - 5 15",
@@ -398,7 +471,7 @@ window.PATH_SESSIONS = {
         "questions": [
           {
             "name": "why",
-            "label": "4.1 Why did you lose?",
+            "label": "5.1 Why did you lose?",
             "type": "select",
             "options": [
               {
@@ -425,12 +498,12 @@ window.PATH_SESSIONS = {
           },
           {
             "name": "minutes",
-            "label": "4.2 Moves 22\u201326 cost nine minutes at about equal. What were you calculating?",
+            "label": "5.2 Moves 22\u201326 cost nine minutes at about equal. What were you calculating?",
             "type": "textarea"
           },
           {
             "name": "tag",
-            "label": "4.3 Tag",
+            "label": "5.3 Tag",
             "type": "select",
             "options": [
               {
@@ -461,7 +534,7 @@ window.PATH_SESSIONS = {
           },
           {
             "name": "note",
-            "label": "4.4 Log note",
+            "label": "5.4 Log note",
             "type": "textarea"
           }
         ],

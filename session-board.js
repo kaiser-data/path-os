@@ -24,6 +24,7 @@
   let branchLocked = [];
   let activeBranch = 0;
   let ready = false;
+  let stopPassed = false;
 
   function steps() { return (session && session.steps) || []; }
   function cur() { return steps()[step] || {}; }
@@ -154,7 +155,8 @@
     document.getElementById("boardTitle").textContent = cur().title || "";
     document.getElementById("boardPrompt").textContent = cur().prompt || "";
     const qs = cur().questions || [];
-    document.getElementById("boardForm").innerHTML = qs.map(renderQuestion).join("");
+    const lead = cur().type === "stopPly" ? renderStopPly(cur().stopPly || {}) : "";
+    document.getElementById("boardForm").innerHTML = lead + qs.map(renderQuestion).join("");
     document.getElementById("boardKey").classList.remove("show");
     document.getElementById("boardKey").innerHTML = "";
     document.getElementById("boardErr").textContent = "";
@@ -165,8 +167,79 @@
 
   function norm(s) { return (s || "").replace(/\s+/g, "").replace(/[+#]/g, ""); }
 
+  // Stop-ply: name the reply that stopped you, then keep going. The continuation box is
+  // not required, so an empty one reaches the grader and gets "that is ply 1".
+  function renderStopPly(sp) {
+    return "<label>After " + esc(sp.candidate) + ", which reply stopped you?<span>One move.</span>" +
+      "<input name='scare' type='text' required></label>" +
+      "<label>Now the moves after it<span>In order, until nothing can take back or check.</span>" +
+      "<input name='continue' type='text'></label>";
+  }
+
+  function tokens(text) {
+    return String(text || "")
+      .replace(/…/g, " ")
+      .replace(/(^|\s)\d+\s*\.+/g, " ")
+      .split(/[\s,;]+/)
+      .map(function (t) { return norm(t).replace(/^\.+/, "").replace(/[.!?]+$/, ""); })
+      .filter(Boolean);
+  }
+
+  function startsWith(have, prefix) {
+    return have.length >= prefix.length && prefix.every(function (m, i) { return have[i] === norm(m); });
+  }
+
+  function gradeStopPly(s, form) {
+    const sp = s.stopPly || {};
+    const cont = sp.continue || [];
+    // Accept the whole line typed into the first box too.
+    const all = tokens(form.elements.scare && form.elements.scare.value)
+      .concat(tokens(form.elements["continue"] && form.elements["continue"].value));
+    if (all[0] !== norm(sp.scare)) {
+      return { ok: false, msg: "After " + sp.candidate + ", that is not the reply that stopped you. Which move was it?" };
+    }
+    const rest = all.slice(1);
+    if (!rest.length) {
+      return { ok: false, msg: "That is ply 1. " + sp.scare + " is where you stopped. Write the moves after it." };
+    }
+    const mix = (sp.mixups || []).find(function (m) { return startsWith(rest, m.match || []); });
+    if (mix && !startsWith(rest, cont)) {
+      return { ok: false, contrast: mix, msg: "Not that line. The board shows where it goes. Reset position, then write it again." };
+    }
+    const g = new Chess(s.fen);
+    g.move(sp.candidate, { sloppy: true });
+    g.move(sp.scare, { sloppy: true });
+    for (let i = 0; i < cont.length; i++) {
+      const ply = i + 2;
+      if (i >= rest.length) {
+        return { ok: false, msg: "You stopped at ply " + (ply - 1) + " (" + (i ? rest[i - 1] : sp.scare) + "). Can anything still capture or check? Keep going." };
+      }
+      const mv = g.move(rest[i], { sloppy: true });
+      if (!mv) return { ok: false, msg: "Ply " + ply + ": " + rest[i] + " is not legal there. Set it up on the board and look again." };
+      if (norm(mv.san) !== norm(cont[i])) {
+        return { ok: false, msg: "Ply " + ply + ": " + rest[i] + " is not the critical move. Look again from there." };
+      }
+    }
+    return { ok: true };
+  }
+
+  function showContrast(s, mix) {
+    game = new Chess(s.fen);
+    (mix.line || []).forEach(function (m) { game.move(m, { sloppy: true }); });
+    selected = null;
+    renderBoard();
+    const key = document.getElementById("boardKey");
+    key.innerHTML = mix.key || "";
+    key.classList.add("show");
+  }
+
   function mustPlayNow() {
     const s = cur();
+    if (s.type === "stopPly") {
+      const sp = s.stopPly || {};
+      // Hidden until the written line passes, so the status bar cannot give it away.
+      return stopPassed ? [sp.candidate, sp.scare].concat(sp.continue || []) : [];
+    }
     if (s.branches && s.branches.length) return s.branches[activeBranch].mustPlay || [];
     return s.mustPlay || [];
   }
@@ -188,6 +261,33 @@
       document.getElementById("boardErr").textContent = "Fill every field.";
       missing[0].focus();
       return;
+    }
+    if (s.type === "stopPly" && !stopPassed) {
+      const graded = gradeStopPly(s, form);
+      if (!graded.ok) {
+        if (graded.contrast) {
+          showContrast(s, graded.contrast);
+        } else if (game.history().length || document.getElementById("boardKey").innerHTML) {
+          // Drop a comparison board left over from an earlier mix-up.
+          game = new Chess(s.fen);
+          selected = null;
+          renderBoard();
+          document.getElementById("boardKey").classList.remove("show");
+          document.getElementById("boardKey").innerHTML = "";
+        }
+        document.getElementById("boardErr").textContent = graded.msg;
+        return;
+      }
+      stopPassed = true;
+      document.getElementById("boardKey").classList.remove("show");
+      document.getElementById("boardKey").innerHTML = "";
+      if (!historyMatches(mustPlayNow())) {
+        game = new Chess(s.fen);
+        selected = null;
+        renderBoard();
+        document.getElementById("boardErr").textContent = "Right. Now play it on the board: " + mustPlayNow().join(" ");
+        return;
+      }
     }
     const need = mustPlayNow();
     if (!historyMatches(need)) {
@@ -236,6 +336,7 @@
   function loadStep(n) {
     step = n;
     activeBranch = 0;
+    stopPassed = false;
     branchLocked = (cur().branches || []).map(function () { return false; });
     game = new Chess(cur().fen);
     selected = null;
