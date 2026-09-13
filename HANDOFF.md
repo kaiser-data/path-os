@@ -13,8 +13,8 @@ This replaces the 2026-09-12 handoff. The dossier exists and trains calculation.
 
 | | |
 |---|---|
-| Last pushed commit | `d755ff1` Add Aagaard log, private book drills and a solve step type |
-| **Uncommitted** (tested, waiting for "push") | `index.html`, `session-board.js`, `CLAUDE.md`, `HANDOFF.md`: Drills tab, collapsible book diagram, saved variations + Copy PGN, board arrows ⏮ ◀ ▶ ⏭ and keys, Lichess analysis link |
+| Last pushed commit | `1b34264` Add Drills tab, saved variations, board navigation and Lichess link |
+| Uncommitted | nothing |
 | Sessions in the repo | `JB2bQpWt` (game 1, won), `XbhWoWMi` (game 2, lost) |
 | Private, gitignored | `books/` (Aagaard PDF, page renders, `ch6/check.html`, `ch6/build_sessions.py`), `sessions/private/` (24 drills `aagaard-6-01` … `24` + `bundle.js`) |
 | Player's progress | Played through XbhWoWMi on the board. Aagaard ch.6 drills built; he confirmed all 24 transcribed positions match the book. He has not logged any exercise yet. |
@@ -144,8 +144,8 @@ Browser tests were run with **Python Playwright** (`from playwright.sync_api imp
 
 ## 8. Next (in order)
 
-1. **Push** the uncommitted work when he says so.
-2. **He solves Aagaard 6.1–6.6** on the board; misses show in Log → "to drill on the board" and as "again" in Drills.
+1. ~~Push~~ done (`1b34264`, 2026-09-13).
+2. **He solves Aagaard 6.1–6.6** on the board (started 2026-09-13); misses show in Log → "to drill on the board" and as "again" in Drills.
 3. **`author_session.py --json`**: emit a stop-ply + diagnose + calculate skeleton with lines from PV1, so the next game starts from a draft. Keys still by hand.
 4. **Known limits worth fixing only if he hits them:**
    - `solve` accepts only the book's main line; a sound side line he writes counts as leaving the line. Possible fix: optional `solve.alternatives[]`.

@@ -35,7 +35,7 @@ His words — use them, don't replace them:
 
 ## Next
 
-1. Push the uncommitted work when he says so (Drills tab, collapsible diagram, variations + Copy PGN, board arrows, Lichess link).
+1. He solves Aagaard 6.1–6.6 on the Board / Drills tabs; read his Aagaard log results when he reports.
 2. New Lichess URL → HANDOFF §5A.
 3. `scripts/author_session.py --json` → draft session skeleton (keys still by hand).
 4. Next Aagaard chapter only when he asks → HANDOFF §5B.
