@@ -8,6 +8,48 @@
     return { sessions: [], games: [], blitz: {}, checks: {}, aagaard: [], variations: {} };
   }
 
+  function isPlainObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
+
+  // Merge `loaded` onto `state` in place: a key only overwrites the blank default
+  // when it has the same shape (array vs. plain object) as that default. A null,
+  // a wrong-typed value, or a primitive falls back to the default. Unknown keys
+  // (not present in the blank shape) are copied through untouched.
+  function mergeShaped(state, loaded) {
+    const defaults = blank();
+    Object.assign(state, defaults);
+    if (!isPlainObject(loaded)) { return state; }
+    Object.keys(loaded).forEach(function (key) {
+      const value = loaded[key];
+      if (!Object.prototype.hasOwnProperty.call(defaults, key)) {
+        state[key] = value;
+        return;
+      }
+      const defaultValue = defaults[key];
+      if (Array.isArray(defaultValue) && Array.isArray(value)) {
+        state[key] = value;
+      } else if (isPlainObject(defaultValue) && isPlainObject(value)) {
+        state[key] = value;
+      }
+      // else: wrong shape, keep the default already assigned above.
+    });
+    return state;
+  }
+
+  // Calls a backend method that may throw synchronously or return a rejecting
+  // promise. Either way this resolves with `fallback` instead of throwing or
+  // leaving an unhandled rejection.
+  function safely(fn, fallback) {
+    let result;
+    try {
+      result = Promise.resolve(fn());
+    } catch (e) {
+      result = Promise.resolve(fallback);
+    }
+    return result.then(undefined, function () { return fallback; });
+  }
+
   function localBackend(key) {
     return {
       name: "local",
@@ -30,13 +72,13 @@
       // The same object for the life of the store: index.html keeps a local alias of it.
       get state() { return state; },
       hydrate: function () {
-        return Promise.resolve(backend.read()).then(function (loaded) {
-          Object.assign(state, blank(), loaded || {});
+        return safely(function () { return backend.read(); }, {}).then(function (loaded) {
+          mergeShaped(state, loaded);
           return state;
         });
       },
       commit: function () {
-        pending = Promise.resolve(backend.write(state)).then(function (ok) {
+        pending = safely(function () { return backend.write(state); }, false).then(function (ok) {
           pending = null;
           return ok !== false;
         });

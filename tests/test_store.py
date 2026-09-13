@@ -93,3 +93,146 @@ def test_settled_resolves_after_commit(browser_page, harness_url):
         }"""
     )
     assert ok is True
+
+
+def test_hydrate_rejects_bad_shapes_and_keeps_blank_defaults(browser_page, harness_url):
+    """A stored value only replaces the default when it matches the default's shape:
+    array for sessions/games/aagaard, plain object for blitz/checks/variations.
+    null, wrong-typed values, or primitives fall back to the blank default."""
+    page = browser_page
+    page.goto(harness_url)
+    result = page.evaluate(
+        """async () => {
+            localStorage.setItem(window.PathStore.KEY, JSON.stringify({
+                games: null,
+                blitz: [1, 2, 3],
+                sessions: "not-an-array",
+                checks: 42,
+                aagaard: { nope: true },
+                variations: null
+            }));
+            const store = window.PathStore.local();
+            const state = await store.hydrate();
+            // Must not throw: games must be a real array to push onto.
+            state.games.push({ event: "after-hydrate" });
+            return {
+                games: state.games,
+                blitz: state.blitz,
+                sessions: state.sessions,
+                checks: state.checks,
+                aagaard: state.aagaard,
+                variations: state.variations
+            };
+        }"""
+    )
+    assert result == {
+        "games": [{"event": "after-hydrate"}],
+        "blitz": {},
+        "sessions": [],
+        "checks": {},
+        "aagaard": [],
+        "variations": {},
+    }
+
+
+def test_unknown_keys_survive_hydrate_with_shape_guard(browser_page, harness_url):
+    """Guard regression: the shape-checking merge must still preserve unknown keys."""
+    page = browser_page
+    page.goto(harness_url)
+    kept = page.evaluate(
+        """async () => {
+            localStorage.setItem(window.PathStore.KEY, JSON.stringify({ futureField: 42 }));
+            const store = window.PathStore.local();
+            const state = await store.hydrate();
+            return state.futureField;
+        }"""
+    )
+    assert kept == 42
+
+
+def test_hydrate_survives_backend_that_throws_synchronously(browser_page, harness_url):
+    page = browser_page
+    page.goto(harness_url)
+    result = page.evaluate(
+        """async () => {
+            let unhandled = false;
+            window.addEventListener("unhandledrejection", () => { unhandled = true; });
+            const store = window.PathStore.create({
+                name: "throws-sync",
+                read: function () { throw new Error("boom"); },
+                write: function () { return true; }
+            });
+            const state = await store.hydrate();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            return { games: state.games.length, unhandled: unhandled };
+        }"""
+    )
+    assert result == {"games": 0, "unhandled": False}
+    assert page.errors == []
+
+
+def test_hydrate_survives_backend_that_rejects(browser_page, harness_url):
+    page = browser_page
+    page.goto(harness_url)
+    result = page.evaluate(
+        """async () => {
+            let unhandled = false;
+            window.addEventListener("unhandledrejection", () => { unhandled = true; });
+            const store = window.PathStore.create({
+                name: "rejects",
+                read: function () { return Promise.reject(new Error("boom")); },
+                write: function () { return true; }
+            });
+            const state = await store.hydrate();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            return { games: state.games.length, unhandled: unhandled };
+        }"""
+    )
+    assert result == {"games": 0, "unhandled": False}
+    assert page.errors == []
+
+
+def test_commit_resolves_false_when_backend_throws_synchronously(browser_page, harness_url):
+    page = browser_page
+    page.goto(harness_url)
+    result = page.evaluate(
+        """async () => {
+            let unhandled = false;
+            window.addEventListener("unhandledrejection", () => { unhandled = true; });
+            const store = window.PathStore.create({
+                name: "throws-sync-write",
+                read: function () { return {}; },
+                write: function () { throw new Error("boom"); }
+            });
+            await store.hydrate();
+            const ok = await store.commit();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            return { ok: ok, unhandled: unhandled };
+        }"""
+    )
+    assert result == {"ok": False, "unhandled": False}
+    assert page.errors == []
+
+
+def test_commit_resolves_false_when_backend_rejects_and_fire_and_forget_is_safe(browser_page, harness_url):
+    page = browser_page
+    page.goto(harness_url)
+    result = page.evaluate(
+        """async () => {
+            let unhandled = false;
+            window.addEventListener("unhandledrejection", () => { unhandled = true; });
+            const store = window.PathStore.create({
+                name: "rejects-write",
+                read: function () { return {}; },
+                write: function () { return Promise.reject(new Error("boom")); }
+            });
+            await store.hydrate();
+            // Fire-and-forget, exactly like index.html does.
+            store.commit();
+            const ok = await store.settled();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            return { ok: ok, unhandled: unhandled };
+        }"""
+    )
+    assert result == {"ok": False, "unhandled": False}
+    assert page.errors == []
