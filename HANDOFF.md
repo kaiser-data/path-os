@@ -14,7 +14,7 @@ This replaces the 2026-09-12 handoff. The dossier exists and trains calculation.
 | | |
 |---|---|
 | Last pushed commit | `1b34264` Add Drills tab, saved variations, board navigation and Lichess link |
-| Uncommitted | nothing |
+| **Uncommitted** (tested, waiting for "push") | `session-board.js`: **Use board line** / **Use as answer**, rewind-to-the-miss, Enter locks |
 | Sessions in the repo | `JB2bQpWt` (game 1, won), `XbhWoWMi` (game 2, lost) |
 | Private, gitignored | `books/` (Aagaard PDF, page renders, `ch6/check.html`, `ch6/build_sessions.py`), `sessions/private/` (24 drills `aagaard-6-01` … `24` + `bundle.js`) |
 | Player's progress | Played through XbhWoWMi on the board. Aagaard ch.6 drills built; he confirmed all 24 transcribed positions match the book. He has not logged any exercise yet. |
@@ -56,6 +56,7 @@ One file app: `index.html` + `session-board.js` + `pieces.js` (CBurnett) + `ches
   - default: questions + `mustPlay` on the board, optional `branches[]` (Next closed until every branch is played; after a lock the board opens the next unplayed branch and names it).
   - `stopPly`: name the reply that stopped you, write the moves after it. Grades "that is ply 1", "you stopped at ply N", mix-up (plays a contrast board + key), illegal / off-line ply. Then the line must be played on the board.
   - `solve`: write the whole line from move one; graded ply by ply against `solve.line` (wrong candidate / stopped at ply N / leaves the line / illegal or ambiguous SAN). First miss auto-logs to the Aagaard log via `logAs`.
+- **Use board line** (under the answer box of a `stopPly` / `solve` step): writes the line on the board — moves played plus moves stepped back over — into the answer box as numbered SAN, so nothing is typed twice. The grader is unchanged; a `Show`n or saved line can go in the same way with **Use as answer**. On a miss in a board-entered line the board rewinds to the ply that went wrong and the rest stays ahead (▶), so the position and the message agree. On a pass, Lock replays the line instead of asking for it again. Enter in an answer box locks (the form no longer reloads the page).
 - The solution line stays hidden from the status bar until the written line passes.
 - Optional book diagram next to the board (`image`, `caption`, `links[]`), collapsible; open/closed is remembered (`localStorage` `zwischenzug_figure_open`).
 - Navigation ⏮ ◀ ▶ ⏭ and keys ← → (step), ↑ start, ↓ end. Back keeps the moves, forward replays; playing the remembered move keeps the rest, any other move drops it. Keys are ignored while typing.

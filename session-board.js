@@ -95,6 +95,13 @@
       lichess.setAttribute("aria-disabled", open ? "false" : "true");
       lichess.title = open ? "Open this board position in the Lichess analysis board" : "Lock first: your own line before the engine";
     }
+    const take = document.getElementById("boardTake");
+    if (take) {
+      const n = boardLine().length;
+      take.disabled = !n || !takesLine();
+      take.textContent = "Use board line" + (n ? " (" + n + " ply)" : "");
+      take.title = n ? "Put the line on the board into the answer" : "Play the line on the board first";
+    }
     const back = document.getElementById("boardBack");
     if (back) {
       const atStart = !game.history().length;
@@ -192,6 +199,8 @@
       bindFigure(figure);
     }
     document.getElementById("boardForm").innerHTML = lead + qs.map(renderQuestion).join("");
+    const take = document.getElementById("boardTake");
+    if (take) take.addEventListener("click", function () { fillAnswer(boardLine()); });
     document.getElementById("boardKey").classList.remove("show");
     document.getElementById("boardKey").innerHTML = "";
     document.getElementById("boardErr").textContent = "";
@@ -209,7 +218,12 @@
     return "<label>After " + esc(sp.candidate) + ", which reply stopped you?<span>One move.</span>" +
       "<input name='scare' type='text' required></label>" +
       "<label>Now the moves after it<span>In order, until nothing can take back or check.</span>" +
-      "<input name='continue' type='text'></label>";
+      "<input name='continue' type='text'></label>" + takeButton();
+  }
+
+  // Board entry for written lines: one click copies the board's line into the answer; Lock still grades it.
+  function takeButton() {
+    return "<div class='row'><button type='button' class='btn ghost' id='boardTake' disabled>Use board line</button></div>";
   }
 
   // Optional source image and links shown before Lock (e.g. the book diagram to compare with the board).
@@ -239,8 +253,8 @@
   // Solve: write the whole line from the first move; graded ply by ply against solve.line.
   function renderSolve(sp) {
     const n = (sp.line || []).length;
-    return "<label>Your line, from the first move<span>The book's line is " + n + " ply. Write all of it before you touch the board.</span>" +
-      "<input name='line' type='text' required></label>";
+    return "<label>Your line, from the first move<span>The book's line is " + n + " ply. Calculate all of it first, then type it or play it on the board and press Use board line.</span>" +
+      "<input name='line' type='text' required></label>" + takeButton();
   }
 
   function gradeSolve(s, form) {
@@ -251,17 +265,17 @@
     for (let i = 0; i < line.length; i++) {
       const ply = i + 1;
       if (i >= have.length) {
-        return { ok: false, miss: { result: "short", ply: i },
+        return { ok: false, at: i, miss: { result: "short", ply: i },
           msg: "You stopped at ply " + i + ". The book's line is " + line.length + " ply. What happens next?" };
       }
       const mv = g.move(have[i], { sloppy: true });
-      if (!mv) return { ok: false, msg: "Ply " + ply + ": " + have[i] + " is not legal there, or it is ambiguous (write Rexe5, R8xf6). Set it up on the board and look again." };
+      if (!mv) return { ok: false, at: i, msg: "Ply " + ply + ": " + have[i] + " is not legal there, or it is ambiguous (write Rexe5, R8xf6). Set it up on the board and look again." };
       if (norm(mv.san) !== norm(line[i])) {
         if (i === 0) {
-          return { ok: false, miss: { result: "wrong" },
+          return { ok: false, at: 0, miss: { result: "wrong" },
             msg: "Not the book's first move. Before the obvious move, look for one in between: a check, a capture, a threat." };
         }
-        return { ok: false, miss: { result: "short", ply: i },
+        return { ok: false, at: i, miss: { result: "short", ply: i },
           msg: "Ply " + ply + ": " + have[i] + " leaves the book's line. " + (i % 2 ? "Which reply is the most testing?" : "Look again from there.") };
       }
     }
@@ -287,12 +301,13 @@
     // Accept the whole line typed into the first box too.
     const all = tokens(form.elements.scare && form.elements.scare.value)
       .concat(tokens(form.elements["continue"] && form.elements["continue"].value));
+    // `at` counts plies from the step position (the candidate is the first), for rewinding a board-entered line.
     if (all[0] !== norm(sp.scare)) {
-      return { ok: false, msg: "After " + sp.candidate + ", that is not the reply that stopped you. Which move was it?" };
+      return { ok: false, at: 1, msg: "After " + sp.candidate + ", that is not the reply that stopped you. Which move was it?" };
     }
     const rest = all.slice(1);
     if (!rest.length) {
-      return { ok: false, msg: "That is ply 1. " + sp.scare + " is where you stopped. Write the moves after it." };
+      return { ok: false, at: 2, msg: "That is ply 1. " + sp.scare + " is where you stopped. Write the moves after it." };
     }
     const mix = (sp.mixups || []).find(function (m) { return startsWith(rest, m.match || []); });
     if (mix && !startsWith(rest, cont)) {
@@ -304,12 +319,12 @@
     for (let i = 0; i < cont.length; i++) {
       const ply = i + 2;
       if (i >= rest.length) {
-        return { ok: false, msg: "You stopped at ply " + (ply - 1) + " (" + (i ? rest[i - 1] : sp.scare) + "). Can anything still capture or check? Keep going." };
+        return { ok: false, at: i + 2, msg: "You stopped at ply " + (ply - 1) + " (" + (i ? rest[i - 1] : sp.scare) + "). Can anything still capture or check? Keep going." };
       }
       const mv = g.move(rest[i], { sloppy: true });
-      if (!mv) return { ok: false, msg: "Ply " + ply + ": " + rest[i] + " is not legal there. Set it up on the board and look again." };
+      if (!mv) return { ok: false, at: i + 2, msg: "Ply " + ply + ": " + rest[i] + " is not legal there. Set it up on the board and look again." };
       if (norm(mv.san) !== norm(cont[i])) {
-        return { ok: false, msg: "Ply " + ply + ": " + rest[i] + " is not the critical move. Look again from there." };
+        return { ok: false, at: i + 2, msg: "Ply " + ply + ": " + rest[i] + " is not the critical move. Look again from there." };
       }
     }
     return { ok: true };
@@ -359,8 +374,12 @@
       const graded = s.type === "solve" ? gradeSolve(s, form) : gradeStopPly(s, form);
       if (!graded.ok) {
         if (graded.miss && !firstMiss) firstMiss = graded.miss;
+        const onBoard = boardLine();
         if (graded.contrast) {
           showContrast(s, graded.contrast);
+        } else if (graded.at != null && onBoard.length && sameLine(onBoard, writtenLine(s, form))) {
+          // The line came from the board: keep it, stand at the ply that went wrong, the rest stays ahead (▶).
+          rewindTo(onBoard, graded.at);
         } else if (game.history().length || document.getElementById("boardKey").innerHTML) {
           // Drop a comparison board left over from an earlier mix-up.
           game = new Chess(s.fen);
@@ -375,6 +394,11 @@
       stopPassed = true;
       document.getElementById("boardKey").classList.remove("show");
       document.getElementById("boardKey").innerHTML = "";
+      renderVariations();
+      // A line entered from the board is already played; only replay to its end.
+      if (!historyMatches(mustPlayNow()) && startsWith(boardLine().map(norm), mustPlayNow())) {
+        while (stepForward()) { /* replay */ }
+      }
       if (!historyMatches(mustPlayNow())) {
         game = new Chess(s.fen);
         selected = null;
@@ -416,6 +440,7 @@
     document.getElementById("boardNext").disabled = step >= steps().length - 1;
     document.getElementById("boardErr").textContent = "";
     renderBoard();
+    renderVariations();
     const logAs = session.logAs || {};
     if (step === steps().length - 1 && logAs.kind === "aagaard" && typeof window.pathLogAagaard === "function") {
       // The first failed attempt decides the log entry; a clean first write is a full line.
@@ -533,11 +558,73 @@
 
   // Put a saved line on the board at the start position, ready to step through with ▶ / →.
   function showLine(moves) {
+    rewindTo(moves, 0);
+  }
+
+  // Play the first `at` moves of a line and keep the rest ahead of the board.
+  function rewindTo(moves, at) {
     game = new Chess(cur().fen);
+    moves.slice(0, at).forEach(function (m) { game.move(m, { sloppy: true }); });
     futureGame = game;
-    future = moves.slice().reverse();
+    future = moves.slice(at).reverse();
     selected = null;
     renderBoard();
+  }
+
+  // The whole line on the board from the step position, including moves stepped back over.
+  function boardLine() {
+    return game ? game.history().concat(aheadMoves().slice().reverse()) : [];
+  }
+
+  function takesLine() {
+    const t = cur().type;
+    return (t === "solve" || t === "stopPly") && !stopPassed && !locked[step];
+  }
+
+  // What the answer boxes say, as plies from the step position.
+  function writtenLine(s, form) {
+    if (s.type === "solve") return tokens(form.elements.line && form.elements.line.value);
+    const sp = s.stopPly || {};
+    return [norm(sp.candidate)].concat(tokens(form.elements.scare && form.elements.scare.value),
+      tokens(form.elements["continue"] && form.elements["continue"].value));
+  }
+
+  function sameLine(a, b) {
+    return a.length === b.length && a.every(function (m, i) { return norm(m) === norm(b[i]); });
+  }
+
+  // Write a line into the answer boxes so it need not be typed. Lock still grades it.
+  function fillAnswer(moves) {
+    const form = document.getElementById("boardForm");
+    const err = document.getElementById("boardErr");
+    const s = cur();
+    if (!takesLine() || !form) return false;
+    if (!moves.length) {
+      err.textContent = "Play the line on the board first.";
+      return false;
+    }
+    let box;
+    if (s.type === "solve") {
+      box = form.elements.line;
+      box.value = numbered(s.fen, moves);
+    } else {
+      const sp = s.stopPly || {};
+      if (norm(moves[0]) !== norm(sp.candidate)) {
+        err.textContent = "Start the board line with " + sp.candidate + ", then the reply that stopped you.";
+        return false;
+      }
+      if (moves.length < 2) {
+        err.textContent = "Now play the reply that stopped you, and the moves after it.";
+        return false;
+      }
+      form.elements.scare.value = moves[1];
+      box = form.elements["continue"];
+      box.value = numbered(s.fen, moves.slice(2), 2);
+    }
+    err.textContent = moves.length + " ply written from the board. Is the last one really the end? Then Lock.";
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+    return true;
   }
 
   // Saved variations: lines played on the board, stored per session step through
@@ -551,9 +638,14 @@
     return { n: Number(p[5]) || 1, black: p[1] === "b" };
   }
 
-  function numbered(fen, moves) {
+  // Numbered SAN; `skip` plies from the position already played before `moves` start.
+  function numbered(fen, moves, skip) {
     const s = startOf(fen);
     let n = s.n, black = s.black;
+    for (let k = 0; k < (skip || 0); k++) {
+      if (black) n++;
+      black = !black;
+    }
     return moves.map(function (m, i) {
       const t = black ? (i === 0 ? n + "... " + m : m) : n + ". " + m;
       if (black) n++;
@@ -636,7 +728,8 @@
       ? lines.map(function (l, i) {
           return "<li><span class='var-line'>" + esc(numbered(fen, l.moves)) + "</span>" +
             (l.note ? "<div class='muted'>" + esc(l.note) + "</div>" : "") +
-            "<div class='row'><button type='button' class='btn ghost' data-var-show='" + i + "'>Show</button>" +
+            "<div class='row'>" + (takesLine() ? "<button type='button' class='btn ghost' data-var-use='" + i + "'>Use as answer</button>" : "") +
+            "<button type='button' class='btn ghost' data-var-show='" + i + "'>Show</button>" +
             "<button type='button' class='btn ghost' data-var-copy='" + i + "'>Copy</button>" +
             "<button type='button' class='btn ghost' data-var-del='" + i + "'>Delete</button></div></li>";
         }).join("")
@@ -646,6 +739,14 @@
     if (pgn && !pgn.classList.contains("hidden")) pgn.value = lines.length ? pgnText(fen, lines) : "";
     list.querySelectorAll("[data-var-copy]").forEach(function (b) {
       b.addEventListener("click", function () { copyText(numbered(fen, lines[Number(b.dataset.varCopy)].moves)); });
+    });
+    list.querySelectorAll("[data-var-use]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        const moves = lines[Number(b.dataset.varUse)].moves;
+        // Also on the board, so a miss can rewind to the ply and Lock need not replay it.
+        showLine(moves);
+        if (fillAnswer(moves)) document.getElementById("varMsg").textContent = "In the answer box. Lock when it is the whole line.";
+      });
     });
     list.querySelectorAll("[data-var-show]").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -757,6 +858,11 @@
       });
     }
     document.getElementById("boardLock").addEventListener("click", lockStep);
+    // Enter in an answer box locks; without this a one-field form submits and reloads the page.
+    document.getElementById("boardForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!locked[step]) lockStep();
+    });
     document.getElementById("boardNext").addEventListener("click", function () {
       if (step < steps().length - 1 && locked[step]) loadStep(step + 1);
     });
