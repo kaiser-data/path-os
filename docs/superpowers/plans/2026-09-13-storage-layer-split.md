@@ -636,7 +636,7 @@ Expected: 3 passed.
 - [ ] **Step 8: Run the whole suite — nothing may regress**
 
 Run: `python3 -m pytest`
-Expected: 15 passed. If any board test fails, the refactor broke behaviour. Do not edit `session-board.js` to make it pass; fix `index.html`.
+Expected: 21 passed. If any board test fails, the refactor broke behaviour. Do not edit `session-board.js` to make it pass; fix `index.html`.
 
 - [ ] **Step 9: Commit**
 
@@ -688,7 +688,7 @@ The browser suite lives in `tests/` and runs with `python3 -m pytest` (pytest + 
 - [ ] **Step 4: Final run**
 
 Run: `python3 -m pytest && node --check session-board.js && node --check store.js`
-Expected: 15 passed, then no output from either check.
+Expected: 21 passed, then no output from either check.
 
 - [ ] **Step 5: Commit**
 
