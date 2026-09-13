@@ -69,6 +69,11 @@ One file app: `index.html` + `session-board.js` + `pieces.js` (CBurnett) + `ches
 
 **Storage:** `store.js` owns the state and the backend. `PathStore.local()` keeps one JSON blob in `localStorage` under `chess_path_to_v1`; reads are synchronous off the cached object, `hydrate()` runs once at boot and `commit()` persists. The page exposes `window.pathStore`. Page hooks are unchanged: `pathLogGame`, `pathLogAagaard`, `pathVariations.get/set`, `pathOpenSession`, `initPathBoard`.
 
+Two behaviours that are not obvious from the call sites:
+
+- **`commit()` does nothing until `hydrate()` has finished** — it returns `false` without writing. A hook that saves before boot completes silently persists nothing, instead of writing a blank state over stored data. A failed read still counts as finished, so a broken backend does not leave the store unable to save.
+- **`hydrate()` shape-checks what it loads.** A stored field whose type does not match the blank shape (`null`, an array where an object belongs, a primitive) is dropped and the blank default kept; unknown keys pass through untouched. Corrupt storage is repaired silently rather than raising — so "my edited JSON came back different" is expected, not a bug.
+
 Fixed along the way: board-logged games were overwritten by the next `save(state)` (now writes through the in-memory state).
 
 ---
