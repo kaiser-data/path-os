@@ -214,6 +214,64 @@ def test_commit_resolves_false_when_backend_throws_synchronously(browser_page, h
     assert page.errors == []
 
 
+def test_commit_before_hydrate_resolves_false_and_does_not_write(browser_page, harness_url):
+    page = browser_page
+    page.goto(harness_url)
+    result = page.evaluate(
+        """async () => {
+            let resolveRead;
+            let writeCount = 0;
+            const store = window.PathStore.create({
+                name: "slow",
+                read: function () {
+                    return new Promise((resolve) => { resolveRead = resolve; });
+                },
+                write: function () { writeCount++; return true; }
+            });
+
+            const hydrating = store.hydrate();
+
+            const earlyOk = await store.commit();
+            const earlyWriteCount = writeCount;
+
+            resolveRead({});
+            await hydrating;
+
+            const lateOk = await store.commit();
+            const lateWriteCount = writeCount;
+
+            return { earlyOk, earlyWriteCount, lateOk, lateWriteCount };
+        }"""
+    )
+    assert result == {
+        "earlyOk": False,
+        "earlyWriteCount": 0,
+        "lateOk": True,
+        "lateWriteCount": 1,
+    }
+
+
+def test_commit_after_failed_hydrate_still_writes(browser_page, harness_url):
+    page = browser_page
+    page.goto(harness_url)
+    result = page.evaluate(
+        """async () => {
+            let writeCount = 0;
+            const store = window.PathStore.create({
+                name: "rejects-read",
+                read: function () { return Promise.reject(new Error("boom")); },
+                write: function () { writeCount++; return true; }
+            });
+
+            await store.hydrate();
+            const ok = await store.commit();
+
+            return { ok, writeCount };
+        }"""
+    )
+    assert result == {"ok": True, "writeCount": 1}
+
+
 def test_commit_resolves_false_when_backend_rejects_and_fire_and_forget_is_safe(browser_page, harness_url):
     page = browser_page
     page.goto(harness_url)

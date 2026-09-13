@@ -67,6 +67,7 @@
   function create(backend) {
     let state = blank();
     let pending = null;
+    let hydrated = false;
     return {
       backend: backend.name,
       // The same object for the life of the store: index.html keeps a local alias of it.
@@ -74,10 +75,12 @@
       hydrate: function () {
         return safely(function () { return backend.read(); }, {}).then(function (loaded) {
           mergeShaped(state, loaded);
+          hydrated = true;
           return state;
         });
       },
       commit: function () {
+        if (!hydrated) { return Promise.resolve(false); }
         pending = safely(function () { return backend.write(state); }, false).then(function (ok) {
           pending = null;
           return ok !== false;

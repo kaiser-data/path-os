@@ -21,6 +21,14 @@ def test_aagaard_entry_survives_reload(browser_page, app_url):
     assert entries[0]["exercise"] == 1
     assert entries[0]["ply"] == 3
 
+    list_text = page.evaluate("document.getElementById('aagaardList').textContent")
+    assert "6.1" in list_text
+    assert "stopped short" in list_text
+    assert "at ply 3" in list_text
+    assert "7m" in list_text
+    assert "test" in list_text
+    assert page.errors == []
+
 
 def test_variation_survives_reload(browser_page, app_url):
     page = browser_page
@@ -38,6 +46,7 @@ def test_variation_survives_reload(browser_page, app_url):
     lines = page.evaluate("window.pathVariations.get('s1:step1')")
 
     assert lines[0]["moves"] == ["e4", "e5"]
+    assert page.errors == []
 
 
 def test_store_is_local_backend_on_file_url(browser_page, app_url):
