@@ -649,7 +649,7 @@
   // rewriting them. Renaming this would touch every caller for no behaviour change.
   function save() { return store.commit(); }
 
-  // Writes through the in-memory state: pushing into a fresh load() was overwritten by the next save(state).
+  // Writes through the in-memory state: pushing onto `state` and calling save() commits it via the store.
   window.pathLogGame = function (entry) {
     const s = state;
     s.games = s.games || [];
@@ -687,7 +687,11 @@
 
   // Saved board lines per "sessionId:stepId", read and written by session-board.js.
   window.pathVariations = {
-    get: (key) => ((state.variations || {})[key] || []).map(l => Object.assign({}, l, { moves: l.moves.slice() })),
+    get: (key) => {
+      const raw = (state.variations || {})[key];
+      const list = Array.isArray(raw) ? raw : [];
+      return list.map(l => Object.assign({}, l, { moves: Array.isArray(l && l.moves) ? l.moves.slice() : [] }));
+    },
     set: (key, list) => {
       state.variations = state.variations || {};
       if (list.length) state.variations[key] = list; else delete state.variations[key];

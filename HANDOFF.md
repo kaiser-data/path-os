@@ -13,8 +13,8 @@ This replaces the 2026-09-12 handoff. The dossier exists and trains calculation.
 
 | | |
 |---|---|
-| Last pushed commit | `1b34264` Add Drills tab, saved variations, board navigation and Lichess link |
-| **Uncommitted** (tested, waiting for "push") | `session-board.js`: **Use board line** / **Use as answer**, rewind-to-the-miss, Enter locks |
+| Last pushed commit | `f6c4a77` Merge the storage-layer split |
+| **Uncommitted** | None — working tree clean |
 | Sessions in the repo | `JB2bQpWt` (game 1, won), `XbhWoWMi` (game 2, lost) |
 | Private, gitignored | `books/` (Aagaard PDF, page renders, `ch6/check.html`, `ch6/build_sessions.py`), `sessions/private/` (24 drills `aagaard-6-01` … `24` + `bundle.js`) |
 | Player's progress | Played through XbhWoWMi on the board. Aagaard ch.6 drills built; he confirmed all 24 transcribed positions match the book. He has not logged any exercise yet. |

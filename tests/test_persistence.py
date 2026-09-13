@@ -49,6 +49,30 @@ def test_variation_survives_reload(browser_page, app_url):
     assert page.errors == []
 
 
+def test_variation_with_malformed_moves_does_not_throw(browser_page, app_url):
+    """Mirrors what a hand-edited/truncated JSON import writes: mergeShaped only
+    checks the top-level `variations` shape (plain object), not what's inside it,
+    so a line missing a proper `moves` array can reach storage. pathVariations.get
+    must tolerate that instead of throwing when session-board.js reads it back."""
+    page = browser_page
+    page.goto(app_url(tab="log"))
+    page.wait_for_function("typeof window.pathVariations === 'object'")
+    page.evaluate(
+        """async () => {
+            localStorage.setItem(window.PathStore.KEY, JSON.stringify({
+                variations: { "s1:bad": { moves: null } }
+            }));
+        }"""
+    )
+
+    page.reload()
+    page.wait_for_function("typeof window.pathVariations === 'object'")
+    lines = page.evaluate("window.pathVariations.get('s1:bad')")
+
+    assert lines == []
+    assert page.errors == []
+
+
 def test_store_is_local_backend_on_file_url(browser_page, app_url):
     page = browser_page
     page.goto(app_url())
