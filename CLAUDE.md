@@ -23,6 +23,9 @@ A local dossier that forces **three more ply** after the move that scared him. G
 - Compose Lichess / Chessable / ChessTempo / Aagaard. No new puzzle engine.
 - **No Stockfish in the browser.** Author offline; the HTML has no eval bar until Lock.
 - `file://` must work. Sessions are bundled JS, not `fetch()`.
+- **The repo is public.** `books/` (his Aagaard PDF) and `sessions/private/` are gitignored. Book exercises become drills only as `sessions/private/<id>.json`, bundled into `sessions/private/bundle.js`. Never put book positions, solutions or text in tracked files. The Aagaard log in the Log tab stores exercise numbers and results, nothing from the book.
+- Book drills: `books/ch6/build_sessions.py` (gitignored) writes `sessions/private/aagaard-6-NN.json`; then run `python3 scripts/bundle_sessions.py`. Step `type: "solve"` grades the written line ply by ply against `solve.line`. Its first miss is logged automatically to the Aagaard log through the session's `logAs: {kind: "aagaard", chapter, exercise}`. Optional step `image`, `caption` and `links[]` show the source diagram next to the board, and the session's `group` puts it under an optgroup in the picker. `books/ch6/check.html` compares every transcribed FEN with the book diagram; he confirmed all 24 on 2026-09-13.
+- Aagaard plan: he solves chapter 6 (Intermediate Moves) on paper and logs each exercise. Only the ones he misses become private board drills. Chapter 6 exercises are on book p.152–153 (1–12), p.157 (13–18) and p.159 (19–24); solutions on p.154–156, p.158 and p.160–162. PDF page = book page + 1.
 - Mac. Stockfish at `/opt/homebrew/bin/stockfish` (v17+).
 - Never commit unless he asks — except he asked you to proceed building; commit if he says go/push.
 

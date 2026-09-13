@@ -2,3 +2,6 @@
 *.log
 .idea/
 .vscode/
+# Copyrighted books and anything transcribed from them. The repo is public.
+books/
+sessions/private/

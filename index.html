@@ -283,6 +283,11 @@
   .board-steps span.done { border-color: var(--stamp); color: var(--stamp); }
   .session-pick { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
   .session-pick select { flex: 0 1 auto; width: auto; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+  .aagaard-log { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(28,23,18,.2); }
+  .step-figure { margin: 0 0 12px; }
+  .step-figure img { display: block; width: 100%; max-width: 340px; height: auto; background: #fff; border: 1px solid rgba(28,23,18,.2); }
+  .step-figure figcaption { font-size: 13px; margin-top: 6px; }
+  .step-figure .links { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
   .session-panel { background: rgba(255,255,255,.5); border: 1px solid rgba(28,23,18,.14); padding: 14px 16px; }
   .session-panel h2 { margin: 0 0 8px; font-size: 1.22rem; }
   .session-panel label { display: block; font-weight: 600; margin: 10px 0 4px; }
@@ -369,6 +374,7 @@
           <div class="session-panel">
             <h2 id="boardTitle"></h2>
             <p id="boardPrompt" class="muted"></p>
+            <div id="boardFigure"></div>
             <div class="branches hidden" id="branchList"></div>
             <form id="boardForm" autocomplete="off"></form>
             <p class="err" id="boardErr"></p>
@@ -495,6 +501,31 @@
             </div>
           </div>
         </div>
+        <div class="aagaard-log">
+          <h2 class="serif">Aagaard log</h2>
+          <p class="muted">Solve from the book at a board. Write the whole line before you look. Log the number and where your line ended, never the position. Chapter 6: exercises book p.152–153 (1–12), p.157 (13–18), p.159 (19–24).</p>
+          <p id="aagaardSummary"></p>
+          <div class="grid2">
+            <form id="aagaardForm">
+              <label>Date <input name="date" type="date" required></label>
+              <label>Chapter <input name="chapter" type="number" min="1" max="10" value="6" required></label>
+              <label>Exercise <input name="exercise" type="number" min="1" max="99" value="1" required></label>
+              <label>Minutes <input name="minutes" type="number" min="1" max="120" value="15" required></label>
+              <label>Your line
+                <select name="result">
+                  <option value="full">Full line, matches the solution to the end</option>
+                  <option value="short">Right first move, line stopped short</option>
+                  <option value="wrong">Wrong candidate</option>
+                  <option value="none">No line written</option>
+                </select>
+              </label>
+              <label>Stopped at ply <input name="ply" type="number" min="1" max="30" placeholder="if it stopped short"></label>
+              <label>Note <textarea name="note" placeholder="The move you did not see. Words, not the position."></textarea></label>
+              <div class="row"><button class="btn" type="submit">Add exercise</button></div>
+            </form>
+            <ul class="loglist" id="aagaardList"></ul>
+          </div>
+        </div>
       </section>
 
       <section id="panel-crush" class="hidden">
@@ -520,6 +551,7 @@
 <script src="chess.min.js"></script>
 <script src="pieces.js"></script>
 <script src="sessions/bundle.js"></script>
+<script src="sessions/private/bundle.js"></script>
 <script src="session-board.js"></script>
 <script>
 (function () {
@@ -533,7 +565,7 @@
       { title: "Off, or 30 min repertoire only if Thursday died", min: 30, hrefs: [["Chessable", "https://www.chessable.com/"]] }
     ]},
     1: { why: "Candidate moves before tactics. See the extra idea.", tasks: [
-      { title: "Aagaard Calculation — candidates, write every line", min: 90, hrefs: [["Lichess board", "https://lichess.org/analysis"]] },
+      { title: "Aagaard ch.6 Intermediate Moves — next six exercises, write every line, then Log → Aagaard log", min: 90, hrefs: [["Lichess board", "https://lichess.org/analysis"]] },
       { title: "Lucena or Philidor, play it out to the end", min: 15, hrefs: [["Practice", "https://lichess.org/practice"], ["Syzygy", "https://syzygy-tables.info/"]] }
     ]},
     2: { why: "Theory, then conversion against perfect defense.", tasks: [
@@ -548,7 +580,7 @@
       { title: "Repertoire maintenance only", min: 30, hrefs: [["Chessable", "https://www.chessable.com/"], ["Explorer", "https://lichess.org/opening"]] }
     ]},
     5: { why: "Proof. One slow game is worth fifty blitz.", tasks: [
-      { title: "Calculation 60 — continue the book chapter", min: 60, hrefs: [["Analysis", "https://lichess.org/analysis"]] },
+      { title: "Calculation 60 — Aagaard misses from the log as board drills, then the next exercises", min: 60, hrefs: [["Analysis", "https://lichess.org/analysis"]] },
       { title: "One 15+10 or 30+20, then annotate before engine", min: 45, hrefs: [["Play Lichess", "https://lichess.org/"]] }
     ]},
     6: { why: "Kuljasevic Saturday: deep analysis of YOUR positions.", tasks: [
@@ -565,8 +597,9 @@
   }
   function save(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
 
+  // Writes through the in-memory state: pushing into a fresh load() was overwritten by the next save(state).
   window.pathLogGame = function (entry) {
-    const s = load();
+    const s = state;
     s.games = s.games || [];
     s.games.push({
       date: entry.date,
@@ -577,6 +610,13 @@
       ts: Date.now()
     });
     save(s);
+    renderLogs();
+  };
+
+  window.pathLogAagaard = function (entry) {
+    state.aagaard = state.aagaard || [];
+    state.aagaard.push(Object.assign({}, entry, { ts: Date.now() }));
+    save(state);
     renderLogs();
   };
 
@@ -593,7 +633,8 @@
     sessions: [],
     games: [],
     blitz: {},
-    checks: {}
+    checks: {},
+    aagaard: []
   }, load());
 
   const $ = (id) => document.getElementById(id);
@@ -655,6 +696,33 @@
     $("gameList").innerHTML = games.length
       ? games.slice(0, 20).map(g => '<li><b>'+g.date+'</b> · '+g.result+' · '+g.tag+'<div class="muted">'+(g.event||"")+' — '+(g.note||"")+'</div></li>').join("")
       : '<li class="muted">No slow games logged. That is the FIDE problem.</li>';
+    renderAagaard();
+  }
+
+  const AAGAARD_RESULT = { full: "full line", short: "stopped short", wrong: "wrong candidate", none: "no line" };
+  function escHTML(s) {
+    return String(s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  }
+
+  function renderAagaard() {
+    const all = state.aagaard || [];
+    $("aagaardList").innerHTML = all.length
+      ? all.slice().reverse().slice(0, 30).map(a =>
+          '<li><b>'+a.date+'</b> · '+a.chapter+'.'+a.exercise+' · '+(AAGAARD_RESULT[a.result] || a.result)
+          + (a.ply ? ' at ply '+a.ply : '') + ' · '+a.minutes+'m'
+          + '<div class="muted">'+escHTML(a.note)+'</div></li>').join("")
+      : '<li class="muted">No exercises logged. Chapter 6 starts on book p.152.</li>';
+    // The latest attempt at each exercise decides whether it still needs a board drill.
+    const latest = {};
+    all.forEach(a => { latest[a.chapter + "." + a.exercise] = a; });
+    const keys = Object.keys(latest).sort((x, y) => {
+      const [xc, xe] = x.split(".").map(Number), [yc, ye] = y.split(".").map(Number);
+      return xc - yc || xe - ye;
+    });
+    const drill = keys.filter(k => latest[k].result !== "full");
+    $("aagaardSummary").textContent = keys.length
+      ? keys.length + " exercise(s) logged · " + (drill.length ? "to drill on the board: " + drill.join(", ") : "nothing to drill")
+      : "";
   }
 
   function render() {
@@ -663,6 +731,7 @@
     renderLogs();
     $("sessionForm").date.value = todayISO();
     $("gameForm").date.value = todayISO();
+    $("aagaardForm").date.value = todayISO();
   }
 
   function showTab(tab) {
@@ -738,6 +807,22 @@
     save(state);
     f.note.value = "";
     f.event.value = "";
+    render();
+  });
+
+  $("aagaardForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const f = e.target;
+    state.aagaard = state.aagaard || [];
+    state.aagaard.push({
+      date: f.date.value, chapter: Number(f.chapter.value), exercise: Number(f.exercise.value),
+      minutes: Number(f.minutes.value), result: f.result.value,
+      ply: f.ply.value ? Number(f.ply.value) : null, note: f.note.value, ts: Date.now()
+    });
+    save(state);
+    f.note.value = "";
+    f.ply.value = "";
+    f.exercise.value = Number(f.exercise.value) + 1;
     render();
   });
 

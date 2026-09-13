@@ -25,6 +25,8 @@
   let activeBranch = 0;
   let ready = false;
   let stopPassed = false;
+  let firstMiss = null;
+  let stepStarted = 0;
 
   function steps() { return (session && session.steps) || []; }
   function cur() { return steps()[step] || {}; }
@@ -155,7 +157,10 @@
     document.getElementById("boardTitle").textContent = cur().title || "";
     document.getElementById("boardPrompt").textContent = cur().prompt || "";
     const qs = cur().questions || [];
-    const lead = cur().type === "stopPly" ? renderStopPly(cur().stopPly || {}) : "";
+    const lead = cur().type === "stopPly" ? renderStopPly(cur().stopPly || {})
+      : cur().type === "solve" ? renderSolve(cur().solve || {}) : "";
+    const figure = document.getElementById("boardFigure");
+    if (figure) figure.innerHTML = renderFigure(cur());
     document.getElementById("boardForm").innerHTML = lead + qs.map(renderQuestion).join("");
     document.getElementById("boardKey").classList.remove("show");
     document.getElementById("boardKey").innerHTML = "";
@@ -174,6 +179,48 @@
       "<input name='scare' type='text' required></label>" +
       "<label>Now the moves after it<span>In order, until nothing can take back or check.</span>" +
       "<input name='continue' type='text'></label>";
+  }
+
+  // Optional source image and links shown before Lock (e.g. the book diagram to compare with the board).
+  function renderFigure(s) {
+    if (!s.image && !(s.links || []).length) return "";
+    const img = s.image ? "<a href='" + esc(s.image) + "' target='_blank'><img src='" + esc(s.image) + "' alt='" + esc(s.caption || "source diagram") + "'></a>" : "";
+    const links = (s.links || []).map(function (l) {
+      return "<a href='" + esc(l.href) + "' target='_blank' rel='noopener'>" + esc(l.label) + "</a>";
+    }).join("");
+    return "<figure class='step-figure'>" + img + "<figcaption>" + esc(s.caption || "") + (links ? "<span class='links'>" + links + "</span>" : "") + "</figcaption></figure>";
+  }
+
+  // Solve: write the whole line from the first move; graded ply by ply against solve.line.
+  function renderSolve(sp) {
+    const n = (sp.line || []).length;
+    return "<label>Your line, from the first move<span>The book's line is " + n + " ply. Write all of it before you touch the board.</span>" +
+      "<input name='line' type='text' required></label>";
+  }
+
+  function gradeSolve(s, form) {
+    const line = (s.solve && s.solve.line) || [];
+    const have = tokens(form.elements.line && form.elements.line.value);
+    if (!have.length) return { ok: false, msg: "Write the first move." };
+    const g = new Chess(s.fen);
+    for (let i = 0; i < line.length; i++) {
+      const ply = i + 1;
+      if (i >= have.length) {
+        return { ok: false, miss: { result: "short", ply: i },
+          msg: "You stopped at ply " + i + ". The book's line is " + line.length + " ply. What happens next?" };
+      }
+      const mv = g.move(have[i], { sloppy: true });
+      if (!mv) return { ok: false, msg: "Ply " + ply + ": " + have[i] + " is not legal there, or it is ambiguous (write Rexe5, R8xf6). Set it up on the board and look again." };
+      if (norm(mv.san) !== norm(line[i])) {
+        if (i === 0) {
+          return { ok: false, miss: { result: "wrong" },
+            msg: "Not the book's first move. Before the obvious move, look for one in between: a check, a capture, a threat." };
+        }
+        return { ok: false, miss: { result: "short", ply: i },
+          msg: "Ply " + ply + ": " + have[i] + " leaves the book's line. " + (i % 2 ? "Which reply is the most testing?" : "Look again from there.") };
+      }
+    }
+    return { ok: true };
   }
 
   function tokens(text) {
@@ -240,6 +287,7 @@
       // Hidden until the written line passes, so the status bar cannot give it away.
       return stopPassed ? [sp.candidate, sp.scare].concat(sp.continue || []) : [];
     }
+    if (s.type === "solve") return stopPassed ? ((s.solve && s.solve.line) || []) : [];
     if (s.branches && s.branches.length) return s.branches[activeBranch].mustPlay || [];
     return s.mustPlay || [];
   }
@@ -262,9 +310,10 @@
       missing[0].focus();
       return;
     }
-    if (s.type === "stopPly" && !stopPassed) {
-      const graded = gradeStopPly(s, form);
+    if ((s.type === "stopPly" || s.type === "solve") && !stopPassed) {
+      const graded = s.type === "solve" ? gradeSolve(s, form) : gradeStopPly(s, form);
       if (!graded.ok) {
+        if (graded.miss && !firstMiss) firstMiss = graded.miss;
         if (graded.contrast) {
           showContrast(s, graded.contrast);
         } else if (game.history().length || document.getElementById("boardKey").innerHTML) {
@@ -321,7 +370,20 @@
     document.getElementById("boardLock").disabled = true;
     document.getElementById("boardNext").disabled = step >= steps().length - 1;
     document.getElementById("boardErr").textContent = "";
-    if (step === steps().length - 1 && typeof window.pathLogGame === "function") {
+    const logAs = session.logAs || {};
+    if (step === steps().length - 1 && logAs.kind === "aagaard" && typeof window.pathLogAagaard === "function") {
+      // The first failed attempt decides the log entry; a clean first write is a full line.
+      const miss = firstMiss || { result: "full" };
+      window.pathLogAagaard({
+        date: new Date().toISOString().slice(0, 10),
+        chapter: logAs.chapter,
+        exercise: logAs.exercise,
+        minutes: Math.max(1, Math.round((Date.now() - stepStarted) / 60000)),
+        result: miss.result,
+        ply: miss.ply || null,
+        note: "board drill",
+      });
+    } else if (step === steps().length - 1 && typeof window.pathLogGame === "function") {
       const noteEl = form.note;
       window.pathLogGame({
         date: new Date().toISOString().slice(0, 10),
@@ -337,6 +399,8 @@
     step = n;
     activeBranch = 0;
     stopPassed = false;
+    firstMiss = null;
+    stepStarted = Date.now();
     branchLocked = (cur().branches || []).map(function () { return false; });
     game = new Chess(cur().fen);
     selected = null;
@@ -350,11 +414,24 @@
     if (!wrap || !sel) return;
     const ids = orderedIds();
     wrap.classList.toggle("hidden", ids.length <= 1);
-    sel.innerHTML = ids.map(function (id) {
+    function option(id) {
       const s = sessions()[id];
       const label = (s.date ? s.date + " · " : "") + (s.title || id) + (s.result ? " · " + s.result : "");
       return "<option value='" + esc(id) + "'>" + esc(label) + "</option>";
-    }).join("");
+    }
+    // Optional `group` puts sessions under an optgroup; ungrouped ones are "Games".
+    const groups = [];
+    ids.forEach(function (id) {
+      const name = sessions()[id].group || "Games";
+      let g = groups.find(function (x) { return x.name === name; });
+      if (!g) { g = { name: name, ids: [] }; groups.push(g); }
+      g.ids.push(id);
+    });
+    sel.innerHTML = groups.length > 1
+      ? groups.map(function (g) {
+          return "<optgroup label='" + esc(g.name) + "'>" + g.ids.map(option).join("") + "</optgroup>";
+        }).join("")
+      : ids.map(option).join("");
     sel.value = sessionId || "";
   }
 
